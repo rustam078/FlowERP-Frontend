@@ -1,0 +1,157 @@
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Clean thin custom scrollbars everywhere (no arrow buttons) */
+* {
+  scrollbar-width: thin;              /* Firefox */
+  scrollbar-color: #CBD5E1 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Remove the up/down arrow buttons on scrollbars */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Hide scrollbar utility class */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* Investment items table: inputs show only a bottom rule, even on focus/click. */
+.skr-item-table .ant-input,
+.skr-item-table .ant-input-number,
+.skr-item-table .ant-select .ant-select-selector {
+  border: none !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.skr-item-table .ant-input:hover,
+.skr-item-table .ant-input-number:hover,
+.skr-item-table .ant-select:hover .ant-select-selector {
+  border-bottom-color: #94A3B8 !important;
+}
+
+/* Discount field: flush left segmented addon, no odd rounded gap. */
+.skr-discount-input .ant-input-number-group-addon {
+  border-radius: 0 !important;
+  padding: 0 2px !important;
+  background: transparent !important;
+}
+.skr-discount-input .ant-input-number {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+.skr-item-table .ant-input:focus,
+.skr-item-table .ant-input-focused,
+.skr-item-table .ant-input-number-focused,
+.skr-item-table .ant-select-focused .ant-select-selector {
+  border-bottom-color: var(--theme-primary) !important;
+  box-shadow: none !important;
+}
+
+/* Bottom-border (borderless) inputs on the sale & investment forms: on focus keep ONLY the
+   bottom line — remove AntD's focus glow/ring and the browser outline. Outlined inputs still
+   show focus via their own border colour, so this only strips the glow, never the border. */
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus-within,
+.ant-input-number:focus,
+.ant-input-number-focused,
+.ant-input-number-focused .ant-input-number-input,
+.ant-input-number-affix-wrapper:focus,
+.ant-input-number-affix-wrapper-focused,
+.ant-input-number-affix-wrapper:focus-within,
+.ant-select-focused .ant-select-selector,
+.ant-picker:focus,
+.ant-picker-focused {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Payment-card inputs (amount / mode / reference): force ONLY a bottom line at all times,
+   grey normally and theme-primary on focus — matches every other bottom-border field. */
+.skr-bottomline,
+.skr-bottomline .ant-select-selector,
+.skr-bottomline.ant-input-number-affix-wrapper {
+  border-width: 0 0 1px 0 !important;
+  border-style: solid !important;
+  border-color: #E2E8F0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.skr-bottomline:focus,
+.skr-bottomline:focus-within,
+.skr-bottomline.ant-input-number-focused,
+.skr-bottomline.ant-input-number-affix-wrapper-focused,
+.skr-bottomline.ant-select-focused .ant-select-selector {
+  border-bottom-color: var(--theme-primary) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* AntD v6 fix: for Select/AutoComplete the border + focus ring live on the ROOT
+   .ant-select element (the inner node is now .ant-select-content, not
+   .ant-select-selector — which is why older .ant-select-selector rules never
+   removed the full border on focus). Borderless selects: never show a box border;
+   on focus show ONLY a bottom line. Outlined (default) selects are untouched. */
+.ant-select-borderless {
+  border: none !important;
+  box-shadow: none !important;
+}
+.ant-select-borderless.ant-select-focused {
+  border-bottom: 1px solid var(--theme-primary) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
