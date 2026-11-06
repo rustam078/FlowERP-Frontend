@@ -80,11 +80,10 @@ export const productionService = {
     productionDate: string;
     remarks?: string;
     items: {
-      productId: string;
-      pieceCodeId: string;
+      work: string;
       quantity: number;
       rate: number;
-      amount: number;
+      productId?: string;
     }[];
   }) => {
     const response = await axiosInstance.post('/production', entry);

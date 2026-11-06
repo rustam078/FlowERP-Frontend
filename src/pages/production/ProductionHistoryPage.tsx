@@ -229,12 +229,12 @@ const ProductionHistoryPage: React.FC = () => {
         const extra = items.length - shown.length;
         return (
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-            {shown.map((item, i) => (
+            {shown.map((item: any, i) => (
               <Tag
                 key={i}
                 style={{ margin: 0, borderRadius: 6, background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#334155', fontWeight: 600, padding: '1px 8px', display: 'inline-flex', alignItems: 'center' }}
               >
-                <ProductLabel productId={item.productId} iconName={item.iconName} name={item.productName} hasImage={item.hasImage} size={16} />
+                {item.work || item.productName || '—'}
                 <span style={{ color: 'var(--theme-primary)', marginLeft: 4 }}>×{item.quantity}</span>
               </Tag>
             ))}
@@ -580,24 +580,18 @@ const ProductionHistoryPage: React.FC = () => {
           {itemsModal.record && (
             <Table
               dataSource={itemsModal.record.items || []}
-              rowKey={(r: any, i?: number) => `${r.productId}-${r.pieceCodeId || i}`}
+              rowKey={(_r: any, i?: number) => String(i)}
               size="small"
               pagination={false}
               scroll={{ x: 'max-content' }}
               columns={[
                 {
-                  title: t('production.colProduct', 'Product'),
-                  dataIndex: 'productName',
-                  key: 'productName',
-                  render: (name: string, item: any) => (
-                    <ProductLabel productId={item.productId} iconName={item.iconName} name={name} hasImage={item.hasImage} size={22} nameStyle={{ fontWeight: 600, color: '#0F172A' }} />
+                  title: t('production.bulk.work', 'Work'),
+                  dataIndex: 'work',
+                  key: 'work',
+                  render: (work: string, item: any) => (
+                    <span style={{ fontWeight: 600, color: '#0F172A' }}>{work || item.productName || '—'}</span>
                   ),
-                },
-                {
-                  title: t('production.colPieceCode', 'Piece Code'),
-                  dataIndex: 'pieceCode',
-                  key: 'pieceCode',
-                  render: (code: string) => code ? <Tag style={{ borderRadius: 6 }}>{code}</Tag> : <span style={{ color: '#94A3B8' }}>—</span>,
                 },
                 { title: t('production.qty', 'Qty'), dataIndex: 'quantity', key: 'quantity', align: 'right' as const, render: (q: number) => <span style={{ fontWeight: 600 }}>{(q || 0).toLocaleString('en-IN')}</span> },
                 { title: t('production.rate', 'Rate'), dataIndex: 'rate', key: 'rate', align: 'right' as const, render: (r: number) => <span style={{ color: '#64748B' }}>{formatCurrency(r || 0)}</span> },
@@ -606,10 +600,10 @@ const ProductionHistoryPage: React.FC = () => {
               summary={() => (
                 <Table.Summary fixed>
                   <Table.Summary.Row style={{ background: '#F8FAFC' }}>
-                    <Table.Summary.Cell index={0} colSpan={2}><span style={{ fontWeight: 800 }}>{t('common.total', 'Total')}</span></Table.Summary.Cell>
-                    <Table.Summary.Cell index={2} align="right"><span style={{ fontWeight: 800, color: 'var(--theme-primary)' }}>{(itemsModal.record.totalQuantity || 0).toLocaleString('en-IN')}</span></Table.Summary.Cell>
-                    <Table.Summary.Cell index={3} />
-                    <Table.Summary.Cell index={4} align="right"><span style={{ fontWeight: 900, color: 'var(--theme-primary)' }}>{formatCurrency(itemsModal.record.totalAmount || 0)}</span></Table.Summary.Cell>
+                    <Table.Summary.Cell index={0}><span style={{ fontWeight: 800 }}>{t('common.total', 'Total')}</span></Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} align="right"><span style={{ fontWeight: 800, color: 'var(--theme-primary)' }}>{(itemsModal.record.totalQuantity || 0).toLocaleString('en-IN')}</span></Table.Summary.Cell>
+                    <Table.Summary.Cell index={2} />
+                    <Table.Summary.Cell index={3} align="right"><span style={{ fontWeight: 900, color: 'var(--theme-primary)' }}>{formatCurrency(itemsModal.record.totalAmount || 0)}</span></Table.Summary.Cell>
                   </Table.Summary.Row>
                 </Table.Summary>
               )}

@@ -36,6 +36,7 @@ import { useEmployeeDetails, useEmployeeCalendar } from '../../hooks/useEmployee
 import { EmployeeInfoCard } from './EmployeeInfoCard';
 import { OverallSummaryCard, CurrentMonthSummaryCard } from './EmployeeSummaryCards';
 import { EmployeeProductionHistoryTable } from './EmployeeProductionHistoryTable';
+import AttendanceCalendar from './AttendanceCalendar';
 import { CurrentMonthProductPerformance } from './CurrentMonthProductPerformance';
 import { ProductWiseEarningsList } from './ProductWiseEarningsList';
 import { EmployeeEarningsChart } from './EmployeeEarningsChart';
@@ -449,6 +450,7 @@ const EmployeeDetailsPage: React.FC = () => {
   }
 
   const { employee, summary, productSummary, productionHistory, currentMonthProductSummary = [], monthlyEarnings = [] } = data;
+  const isMonthly = employee?.paymentType === 'MONTHLY'; // monthly staff have no piece-work sections
 
   return (
     <ConfigProvider
@@ -589,145 +591,28 @@ const EmployeeDetailsPage: React.FC = () => {
           </Col>
         </Row>
 
-        {/* Row 2: both graphs — Monthly Earnings Trend + Product Contribution % */}
-        <Row gutter={[14, 14]} style={{ display: 'flex', alignItems: 'stretch' }}>
-          <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
-            <EmployeeEarningsChart data={monthlyEarnings} />
-          </Col>
-          <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
-            <EmployeeProductChart data={productSummary} />
-          </Col>
-        </Row>
-
-        {/* Row 3: Product Wise Earnings (left) + Production Calendar (right) */}
-        <Row gutter={[14, 14]} style={{ display: 'flex', alignItems: 'stretch' }}>
-          <Col xs={24} lg={10} style={{ display: 'flex', flexDirection: 'column' }}>
-            <ProductWiseEarningsList data={productSummary} />
-          </Col>
-          <Col xs={24} lg={14} style={{ display: 'flex', flexDirection: 'column' }}>
-            <Card
-              title={
-                <span style={{ color: '#0F172A', fontWeight: 700, fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center' }}>
-                  {t('employees.calendar.title', 'Production Calendar')}
-                  <HeadingInfo text={t('employees.calendar.info', "Daily earnings overview — each cell shows that day's pieces and earnings.")} />
-                </span>
-              }
-              style={{
-                ...cardStyle,
-                height: '100%',
-              }}
-              bodyStyle={{ padding: '14px' }}
-            >
-              {/* Calendar Filters & Month Header Row */}
-              <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>{t('employees.calendar.selectMonth', 'Select Month:')}</span>
-                  <DatePicker
-                    picker="month"
-                    value={calendarValue}
-                    onChange={(date) => {
-                      if (date) {
-                        setCalendarValue(date);
-                        if (filterType === 'month') {
-                          setSelectedMonth(date);
-                          setFilterRange({
-                            fromDate: date.startOf('month').format('YYYY-MM-DD'),
-                            toDate: date.endOf('month').format('YYYY-MM-DD'),
-                          });
-                        }
-                      }
-                    }}
-                    disabledDate={(current) => {
-                      // Do not allow future month/year option (current local date is June 25, 2026)
-                      const maxDate = currentDateBase;
-                      return current && current.isAfter(maxDate, 'month');
-                    }}
-                    format="MMMM YYYY"
-                    allowClear={false}
-                    style={{ width: 180, borderRadius: 6 }}
-                    disabled={filterType === 'custom' || filterType === 'current-month'}
-                  />
-                  {filterType === 'custom' && (
-                    <span style={{ fontSize: '0.85rem', color: 'var(--theme-primary)', fontWeight: 600 }}>
-                      {t('employees.calendar.filteredCustom', 'Filtered by Custom Date Range')}
-                    </span>
-                  )}
-                  {filterType === 'current-month' && (
-                    <span style={{ fontSize: '0.85rem', color: 'var(--theme-primary)', fontWeight: 600 }}>
-                      {t('employees.calendar.filteredCurrent', 'Filtered by Current Month')}
-                    </span>
-                  )}
-                </div>
-
-                {/* Month & Year Header aligned on the right side */}
-                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1E293B', flexShrink: 0 }}>
-                  {calendarValue.format('MMMM YYYY')}
-                </div>
-              </div>
-
-              <Spin spinning={isCalendarLoading} size="large" tip={t('employees.calendar.loading', 'Loading production calendar...')}>
-                {!hasCalendarProduction ? (
-                  <div style={{ padding: '60px 24px', textAlign: 'center' }}>
-                    <Empty
-                      description={
-                        <span style={{ color: '#64748B', fontWeight: 600, fontSize: '0.95rem' }}>
-                          {t('employees.calendar.empty', 'No production activity found for selected period.')}
-                        </span>
-                      }
-                    />
-                  </div>
-                ) : (
-                  <div className="custom-calendar-container">
-                    <style>{`
-                      .custom-calendar-container .ant-picker-cell {
-                        overflow: visible !important;
-                      }
-                      .custom-calendar-container .ant-picker-cell-inner {
-                        height: auto !important;
-                        min-height: 52px !important;
-                        overflow: visible !important;
-                      }
-                      .custom-calendar-container .ant-picker-calendar-date {
-                        min-height: 52px !important;
-                        height: auto !important;
-                        padding: 2px 4px !important;
-                        display: flex !important;
-                        flex-direction: column !important;
-                        justify-content: space-between !important;
-                        overflow: visible !important;
-                      }
-                      .custom-calendar-container .ant-picker-calendar-date-value {
-                        line-height: 18px !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        font-size: 0.85rem !important;
-                      }
-                      .custom-calendar-container .ant-picker-calendar-date-content {
-                        height: auto !important;
-                        margin: 0 !important;
-                        overflow: visible !important;
-                      }
-                    `}</style>
-                    <Calendar
-                      value={calendarValue}
-                      onSelect={handleSelect}
-                      cellRender={cellRender}
-                      fullscreen={true}
-                      headerRender={() => null}
-                    />
-                  </div>
-                )}
-              </Spin>
+        {/* Earnings trend (piece-rate) + Attendance, side by side (50-50) */}
+        <Row gutter={[14, 14]} style={{ marginBottom: 8, display: 'flex', alignItems: 'stretch' }}>
+          {!isMonthly && (
+            <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
+              <EmployeeEarningsChart data={monthlyEarnings} />
+            </Col>
+          )}
+          <Col xs={24} lg={isMonthly ? 24 : 12} style={{ display: 'flex', flexDirection: 'column' }}>
+            <Card style={{ ...cardStyle, height: '100%' }} bodyStyle={{ padding: 20 }} title={t('employees.attendance.title', 'Attendance')}>
+              {employeeId && <AttendanceCalendar employeeId={employeeId} />}
             </Card>
           </Col>
         </Row>
 
-        {/* 3. Production History */}
-        <Row gutter={[14, 14]} style={{ marginBottom: 8 }}>
-          <Col xs={24}>
-            <EmployeeProductionHistoryTable data={productionHistory} />
-          </Col>
-        </Row>
+        {/* Piece-work history (piece-rate employees only) */}
+        {!isMonthly && (
+          <Row gutter={[14, 14]} style={{ marginBottom: 8 }}>
+            <Col xs={24}>
+              <EmployeeProductionHistoryTable data={productionHistory} />
+            </Col>
+          </Row>
+        )}
       </Box>
 
       {/* Production Details Drawer */}

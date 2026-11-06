@@ -38,6 +38,12 @@ export const productService = {
     return response.data;
   },
 
+  // Produce finished stock for one or more products at once (bulk) → MANUFACTURED batches.
+  produce: async (payload) => {
+    const response = await axiosInstance.post('/inventory/produce', payload);
+    return response.data;
+  },
+
   // Turn a purchased-only product into BOTH by adding piece codes + cost/selling price.
   enableManufacturing: async (productId, body) => {
     const response = await axiosInstance.post(`/products/${productId}/enable-manufacturing`, body);

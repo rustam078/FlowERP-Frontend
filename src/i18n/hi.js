@@ -2,7 +2,7 @@
 export default {
   // ── Navigation ──
   'nav.dashboard': 'डैशबोर्ड',
-  'nav.production': 'उत्पादन',
+  'nav.production': 'पीस वर्क',
   'nav.inventory': 'इन्वेंटरी',
   'nav.products': 'प्रोडक्ट्स',
   'nav.investment': 'निवेश',

@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
-import { Drawer, Form, Input, DatePicker, Select, Button, Space } from 'antd';
+import { Drawer, Form, Input, InputNumber, DatePicker, Select, Button, Space } from 'antd';
 import { UserOutlined, PlusOutlined, EditOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { IEmployee } from '../../types/employee.types';
+import { getCurrencySymbol } from '../../utils/currency';
 import { useT } from '../../contexts/LanguageContext';
 
 interface EmployeeFormDrawerProps {
@@ -33,12 +34,16 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
           mobileNumber: employee.mobileNumber || '',
           address: employee.address || '',
           active: employee.active,
+          paymentType: employee.paymentType || 'PIECE_RATE',
+          monthlySalary: employee.monthlySalary ?? undefined,
+          openingAdvance: employee.openingAdvance ?? undefined,
         });
       } else {
         form.resetFields();
         form.setFieldsValue({
           joiningDate: dayjs(), // default joining date to today
           active: true,
+          paymentType: 'PIECE_RATE',
         });
       }
     }
@@ -153,6 +158,36 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
             <DatePicker style={{ width: '100%' }} size="large" format="YYYY-MM-DD" />
           </Form.Item>
         )}
+
+        <Form.Item
+          name="paymentType"
+          label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.paymentType', 'Payment Type')}</span>}
+          rules={[{ required: true }]}
+        >
+          <Select size="large">
+            <Select.Option value="PIECE_RATE">{t('employees.form.pieceRate', 'Piece Rate')}</Select.Option>
+            <Select.Option value="MONTHLY">{t('employees.form.monthly', 'Monthly Salary')}</Select.Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item noStyle shouldUpdate={(p, c) => p.paymentType !== c.paymentType}>
+          {() => form.getFieldValue('paymentType') === 'MONTHLY' && (
+            <Form.Item
+              name="monthlySalary"
+              label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.monthlySalary', 'Monthly Salary')}</span>}
+              rules={[{ required: true, message: t('employees.form.salaryRequired', 'Monthly salary is required.') }]}
+            >
+              <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+            </Form.Item>
+          )}
+        </Form.Item>
+
+        <Form.Item
+          name="openingAdvance"
+          label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.openingAdvance', 'Opening Advance')} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{t('products.optional', '(optional)')}</span></span>}
+        >
+          <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+        </Form.Item>
 
         <Form.Item
           name="address"

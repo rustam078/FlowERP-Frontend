@@ -3,7 +3,7 @@
 export default {
   // ── Navigation (keys match Sidebar MENU_ITEMS keys: nav.<key>) ──
   'nav.dashboard': 'Dashboard',
-  'nav.production': 'Production',
+  'nav.production': 'Piece Work',
   'nav.inventory': 'Inventory',
   'nav.products': 'Products',
   'nav.investment': 'Investment',

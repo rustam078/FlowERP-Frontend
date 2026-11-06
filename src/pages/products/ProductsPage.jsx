@@ -29,6 +29,7 @@ import {
   ShoppingOutlined,
   CheckCircleOutlined,
   PlusOutlined,
+  AppstoreAddOutlined,
   SearchOutlined,
   InboxOutlined,
   TagsOutlined,
@@ -44,6 +45,7 @@ import {
 import { Box } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { productService } from '../../services/productService';
+import ProduceStockDrawer from './ProduceStockDrawer';
 import { getProductIcon, PRODUCT_ICONS, PRODUCT_ICON_LABELS } from '../../utils/product-icons';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useT } from '../../contexts/LanguageContext';
@@ -202,6 +204,7 @@ const ProductsPage = () => {
   const [searchText, setSearchText] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [produceOpen, setProduceOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
 
   // Optional image selected in the create form (uploaded after the product is created).
@@ -415,7 +418,8 @@ const ProductsPage = () => {
       return;
     }
 
-    createProductMutation.mutate(values);
+    // Cost/selling are optional in the form → default to 0 (base pricing starts at zero).
+    createProductMutation.mutate({ ...values, cost: values.cost ?? 0, sellingPrice: values.sellingPrice ?? 0 });
   };
 
   // ── Client-side filtering & sorting ────────────────────
@@ -505,6 +509,15 @@ const ProductsPage = () => {
               ]}
             />
 
+            {can('products', 'write') && (
+              <Button
+                icon={<AppstoreAddOutlined />}
+                onClick={() => setProduceOpen(true)}
+                style={{ borderRadius: 8, fontWeight: 700, height: 38, paddingInline: 18 }}
+              >
+                {t('products.produce.title', 'Produce / Add Stock')}
+              </Button>
+            )}
             {can('products', 'write') && (
               <Button
                 type="primary"
@@ -785,7 +798,6 @@ const ProductsPage = () => {
             onFinish={onFinishProduct}
             autoComplete="off"
             requiredMark={false}
-            initialValues={{ pieceCodes: [{}] }}
           >
             <Card style={{ borderRadius: 10, border: '1px solid #E2E8F0' }} bodyStyle={{ padding: 20 }}>
               <Form.Item
@@ -806,67 +818,28 @@ const ProductsPage = () => {
 
               <Form.Item
                 name="iconName"
-                label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.icon', 'Product Icon *')}</span>}
-                rules={[{ required: true, message: t('products.rule.iconRequired', 'Product Icon is mandatory.') }]}
+                label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.icon', 'Product Icon')} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{t('products.optional', '(optional)')}</span></span>}
               >
                 <IconPicker />
               </Form.Item>
 
-              {/* Costing + selling price (selling price becomes effective today in Pricing History). */}
+              {/* Base cost + selling price (optional; default 0). Selling price becomes effective today in Pricing History. */}
               <div style={{ display: 'flex', gap: 12 }}>
                 <Form.Item
                   name="cost"
                   style={{ flex: 1 }}
-                  label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.costPrice', 'Cost Price *')}</span>}
-                  rules={[{ required: true, message: t('products.rule.costRequired', 'Cost price is mandatory.') }]}
+                  label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.costPrice', 'Cost Price')}</span>}
                 >
                   <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
                 </Form.Item>
                 <Form.Item
                   name="sellingPrice"
                   style={{ flex: 1 }}
-                  label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.sellingPrice', 'Selling Price *')}</span>}
-                  rules={[{ required: true, message: t('products.rule.sellingRequired', 'Selling price is mandatory.') }]}
+                  label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.sellingPrice', 'Selling Price')}</span>}
                 >
                   <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
                 </Form.Item>
               </div>
-
-              {/* One or more piece codes, each with its rate. */}
-              <div style={{ fontWeight: 700, color: '#374151', marginBottom: 8 }}>{t('products.field.pieceCodes', 'Piece Codes *')}</div>
-              <Form.List name="pieceCodes">
-                {(fields, { add, remove }) => (
-                  <>
-                    {fields.map(({ key, name, ...restField }) => (
-                      <div key={key} style={{ display: 'flex', gap: 12, marginBottom: 8, alignItems: 'flex-start' }}>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'code']}
-                          style={{ flex: 1, marginBottom: 0 }}
-                          getValueFromEvent={(e) => (e.target.value || '').toUpperCase()}
-                          rules={[{ required: true, message: t('products.rule.codeRequired', 'Code required') }, { whitespace: true, message: t('products.rule.codeRequired', 'Code required') }]}
-                        >
-                          <Input placeholder={t('products.placeholder.pieceCode', 'Piece code')} size="large" style={{ borderRadius: 8, textTransform: 'uppercase' }} />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'rate']}
-                          style={{ flex: 1, marginBottom: 0 }}
-                          rules={[{ required: true, message: t('products.rule.rateRequired', 'Rate required') }]}
-                        >
-                          <InputNumber min={0.01} placeholder="0" size="large" addonBefore={getCurrencySymbol()} style={{ width: '100%' }} />
-                        </Form.Item>
-                        {fields.length > 1 && (
-                          <Button type="text" danger icon={<MinusCircleOutlined />} onClick={() => remove(name)} style={{ marginTop: 2 }} />
-                        )}
-                      </div>
-                    ))}
-                    <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />} style={{ borderRadius: 8, marginBottom: 16 }}>
-                      {t('products.addPieceCode', 'Add Piece Code')}
-                    </Button>
-                  </>
-                )}
-              </Form.List>
 
               <Form.Item
                 name="description"
@@ -926,6 +899,18 @@ const ProductsPage = () => {
             </Card>
           </Form>
         </Drawer>
+
+        {/* Produce / Add Stock: bulk multi-product → MANUFACTURED batches. */}
+        <ProduceStockDrawer
+          open={produceOpen}
+          onClose={() => setProduceOpen(false)}
+          products={products}
+          onDone={() => {
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            queryClient.invalidateQueries({ queryKey: ['inventoryProducts'] });
+            queryClient.invalidateQueries({ queryKey: ['dashProducts'] });
+          }}
+        />
 
         {/* Enable Manufacturing: purchased product → BOTH, with piece codes + pricing. */}
         <Modal

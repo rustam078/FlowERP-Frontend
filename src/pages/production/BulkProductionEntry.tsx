@@ -2,40 +2,29 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ConfigProvider, Card, Collapse, Select, InputNumber, Button, DatePicker,
+  ConfigProvider, Card, Collapse, InputNumber, Button, DatePicker,
   Drawer, Checkbox, Input, Tag, Avatar, Empty, notification, Breadcrumb, Tooltip, Modal,
 } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, UserAddOutlined, TeamOutlined,
-  AppstoreOutlined, ShoppingOutlined, DollarOutlined, SearchOutlined,
+  AppstoreOutlined, ToolOutlined, DollarOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import { Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 
 import { productionService } from '../../services/productionService';
 import { employeeService } from '../../services/employee.service';
-import { productService } from '../../services/productService';
-import ProductLabel from '../../components/common/ProductLabel';
 import { getCurrencySymbol } from '../../utils/currency';
 import { useT } from '../../contexts/LanguageContext';
 
-// One product line inside an employee card. amount is derived (qty × rate).
-interface ProdRow { key: number; productId?: string; pieceCodeId?: string; quantity?: number; rate: number; }
+// One piece-work line: free-text work + qty + locked rate. amount is derived (qty × rate).
+interface ProdRow { key: number; work?: string; quantity?: number; rate?: number; }
 interface EmpBlock { key: number; employeeId: string; employeeName: string; employeeCode?: string; products: ProdRow[]; }
 
 let seq = 1;
 const nextKey = () => seq++;
-const emptyRow = (): ProdRow => ({ key: nextKey(), rate: 0 });
-const isValidRow = (r: ProdRow) => !!r.productId && !!r.pieceCodeId && Number(r.quantity) > 0;
-
-// Pick the piece code to auto-select: the only one, else the latest (by createdAt / id).
-const pickPieceCode = (codes: any[]): any => {
-  if (!codes?.length) return undefined;
-  if (codes.length === 1) return codes[0];
-  return [...codes].sort((a, b) =>
-    String(b.createdAt || '').localeCompare(String(a.createdAt || '')) ||
-    String(b.id).localeCompare(String(a.id)))[0];
-};
+const emptyRow = (): ProdRow => ({ key: nextKey() });
+const isValidRow = (r: ProdRow) => !!(r.work && r.work.trim()) && Number(r.quantity) > 0 && r.rate != null && Number(r.rate) >= 0;
 
 const fmtMoney = (v: number) =>
   `${getCurrencySymbol()}${Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
@@ -74,8 +63,6 @@ const BulkProductionEntry: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [triedSave, setTriedSave] = useState(false); // show red "data missing" only after a save attempt
   const [confirmOpen, setConfirmOpen] = useState(false); // summary confirmation before saving
-  // Piece codes cached per product (shared across employees) + per-product loading flag.
-  const [pcByProduct, setPcByProduct] = useState<Record<string, any[]>>({});
 
   // Auto-save the draft on any change; remove it when the form is emptied.
   useEffect(() => {
@@ -85,23 +72,9 @@ const BulkProductionEntry: React.FC = () => {
     } catch { /* storage unavailable */ }
   }, [employees, productionDate]);
 
-  // On restore, fetch piece codes for already-selected products so the Code labels render.
-  useEffect(() => {
-    const ids = [...new Set((draft0?.employees || []).flatMap((e: any) => (e.products || []).map((p: any) => p.productId)).filter(Boolean))] as string[];
-    ids.forEach(async (id) => {
-      try { const codes = (await productService.getActivePieceCodes(id))?.data || []; setPcByProduct((prev) => ({ ...prev, [id]: codes })); } catch { /* ignore */ }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const { data: employeesData } = useQuery({ queryKey: ['employees'], queryFn: employeeService.getEmployees });
-  const { data: productsData } = useQuery({ queryKey: ['products'], queryFn: productService.getProducts });
-  const allEmployees = (employeesData?.data || []).filter((e: any) => e.active);
-  // Only manufacturable products can be produced.
-  const prodOptions = useMemo(
-    () => (productsData?.data || []).filter((p: any) => p.active && p.source !== 'PURCHASED'),
-    [productsData]
-  );
+  // Only PIECE_RATE employees do piece-work entries (monthly staff are paid via salary).
+  const allEmployees = (employeesData?.data || []).filter((e: any) => e.active && e.paymentType === 'PIECE_RATE');
 
   // Employees not yet added (for the Add Employee modal).
   const addedIds = new Set(employees.map((e) => e.employeeId));
@@ -136,30 +109,6 @@ const BulkProductionEntry: React.FC = () => {
     setAddOpen(false);
   };
 
-  // Load piece codes once per product, then auto-select + set rate on the row.
-  const onProductChange = async (empKey: number, rowKey: number, productId: string) => {
-    updateRow(empKey, rowKey, { productId, pieceCodeId: undefined, rate: 0 });
-    let codes = pcByProduct[productId];
-    if (!codes) {
-      try { codes = (await productService.getActivePieceCodes(productId))?.data || []; }
-      catch { codes = []; }
-      setPcByProduct((prev) => ({ ...prev, [productId]: codes! }));
-    }
-    const pc = pickPieceCode(codes);
-    if (pc) updateRow(empKey, rowKey, { productId, pieceCodeId: pc.id, rate: Number(pc.rate) || 0 });
-  };
-
-  const onPieceCodeChange = (empKey: number, rowKey: number, pieceCodeId: string, productId?: string) => {
-    const pc = (pcByProduct[productId || ''] || []).find((c) => c.id === pieceCodeId);
-    updateRow(empKey, rowKey, { pieceCodeId, rate: Number(pc?.rate) || 0 });
-  };
-
-  // Products still selectable for a row = manufacturable minus those used by sibling rows.
-  const rowProductOptions = (emp: EmpBlock, row: ProdRow) => {
-    const used = new Set(emp.products.filter((r) => r.key !== row.key && r.productId).map((r) => r.productId));
-    return prodOptions.filter((p: any) => p.id === row.productId || !used.has(p.id));
-  };
-
   // ── Totals ──────────────────────────────────────────────
   const empTotals = (e: EmpBlock) => {
     const qty = e.products.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
@@ -167,13 +116,13 @@ const BulkProductionEntry: React.FC = () => {
     return { qty, amt };
   };
   const totals = useMemo(() => {
-    let products = 0, qty = 0, amt = 0;
+    let lines = 0, qty = 0, amt = 0;
     employees.forEach((e) => e.products.forEach((r) => {
-      if (r.productId) products += 1;
+      if (r.work && r.work.trim()) lines += 1;
       qty += Number(r.quantity) || 0;
       amt += (Number(r.quantity) || 0) * (Number(r.rate) || 0);
     }));
-    return { employees: employees.length, products, qty, amt };
+    return { employees: employees.length, lines, qty, amt };
   }, [employees]);
 
   // ── Save all (loop one POST per employee; each stays a separate entry) ──
@@ -194,8 +143,7 @@ const BulkProductionEntry: React.FC = () => {
     let ok = 0;
     for (const emp of employees) {
       const items = emp.products.filter(isValidRow).map((r) => ({
-        productId: r.productId!, pieceCodeId: r.pieceCodeId!,
-        quantity: Number(r.quantity), rate: Number(r.rate), amount: Number(r.quantity) * Number(r.rate),
+        work: r.work!.trim(), quantity: Number(r.quantity), rate: Number(r.rate),
       }));
       try { await productionService.createProduction({ employeeId: emp.employeeId, productionDate: date, items }); ok += 1; }
       catch { failed.push(emp); }
@@ -221,50 +169,33 @@ const BulkProductionEntry: React.FC = () => {
 
   const cardStyle = { borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(15,23,42,0.05)' };
 
-  // One product row (manual grid; rate & amount are read-only/derived).
+  // One piece-work row: Work (free text) + Qty + Rate (locked) + Amount (derived).
   const renderRow = (emp: EmpBlock, row: ProdRow, idx: number) => {
     const qty = Number(row.quantity) || 0;
-    const codes = pcByProduct[row.productId || ''] || [];
+    const rate = Number(row.rate) || 0;
+    const invalid = triedSave && !isValidRow(row);
     return (
-      <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 150px 90px 90px 110px 40px', gap: 8, alignItems: 'center', padding: '6px 0', borderTop: idx === 0 ? 'none' : '1px solid #F1F5F9' }}>
+      <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px 110px 110px 40px', gap: 8, alignItems: 'center', padding: '6px 0', borderTop: idx === 0 ? 'none' : '1px solid #F1F5F9' }}>
         <span style={{ color: '#94A3B8', fontWeight: 700, fontSize: '0.8rem' }}>{idx + 1}</span>
-        <Select
-          placeholder={t('production.colProduct', 'Product')}
-          value={row.productId}
-          onChange={(v) => onProductChange(emp.key, row.key, v)}
-          showSearch optionFilterProp="label" size="middle" variant="borderless" className="bpe-field"
+        <Input
+          placeholder={t('production.bulk.workPlaceholder', 'Work (e.g. Cutting)')}
+          value={row.work}
+          onChange={(e) => updateRow(emp.key, row.key, { work: e.target.value })}
+          variant="borderless" className={`bpe-field${invalid && !row.work ? ' bpe-bad' : ''}`}
           style={{ width: '100%' }}
-        >
-          {rowProductOptions(emp, row).map((p: any) => (
-            <Select.Option key={p.id} value={p.id} label={p.name}>
-              <ProductLabel productId={p.id} iconName={p.iconName} name={p.name} hasImage={p.hasImage} size={18} />
-            </Select.Option>
-          ))}
-        </Select>
-        <Select
-          placeholder={t('production.code', 'Code')}
-          value={row.pieceCodeId}
-          onChange={(v) => onPieceCodeChange(emp.key, row.key, v, row.productId)}
-          disabled={!row.productId} showSearch optionFilterProp="label" size="middle" variant="borderless" className="bpe-field"
-          style={{ width: '100%' }}
-          notFoundContent={t('production.noCodes', 'No codes')}
-        >
-          {codes.map((pc: any) => (
-            <Select.Option key={pc.id} value={pc.id} label={pc.code}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{pc.code}</span>
-                <span style={{ color: 'var(--theme-primary)', fontWeight: 700 }}>{fmtMoney(pc.rate)}</span>
-              </div>
-            </Select.Option>
-          ))}
-        </Select>
+        />
         <InputNumber
           min={1} controls={false} placeholder={t('production.qty', 'Qty')} value={row.quantity}
           onChange={(v) => updateRow(emp.key, row.key, { quantity: v as number })}
-          variant="borderless" className="bpe-field" style={{ width: '100%' }}
+          variant="borderless" className={`bpe-field${invalid && !(Number(row.quantity) > 0) ? ' bpe-bad' : ''}`} style={{ width: '100%' }}
         />
-        <span style={{ textAlign: 'right', color: '#64748B', fontWeight: 600 }}>{fmtMoney(row.rate)}</span>
-        <span style={{ textAlign: 'right', color: '#0F172A', fontWeight: 800 }}>{fmtMoney(qty * row.rate)}</span>
+        <InputNumber
+          min={0} controls={false} placeholder={t('production.rate', 'Rate')} value={row.rate}
+          onChange={(v) => updateRow(emp.key, row.key, { rate: v as number })}
+          prefix={getCurrencySymbol()}
+          variant="borderless" className={`bpe-field${invalid && row.rate == null ? ' bpe-bad' : ''}`} style={{ width: '100%' }}
+        />
+        <span style={{ textAlign: 'right', color: '#0F172A', fontWeight: 800 }}>{fmtMoney(qty * rate)}</span>
         <Tooltip title={t('common.delete', 'Delete')}>
           <Button type="text" danger size="small" icon={<DeleteOutlined />}
             disabled={emp.products.length <= 1}
@@ -280,11 +211,9 @@ const BulkProductionEntry: React.FC = () => {
       <Box>
         {/* Row fields: bottom-border only, even when focused/active */}
         <style>{`
-          .bpe-field.ant-select .ant-select-selector { border: none !important; box-shadow: none !important; border-radius: 0 !important; background: transparent !important; }
-          .bpe-field.ant-select { border-bottom: 1px solid #CBD5E1 !important; }
-          .bpe-field.ant-select.ant-select-focused { border-bottom-color: var(--theme-primary) !important; }
-          .bpe-field.ant-input-number { border: none !important; border-bottom: 1px solid #CBD5E1 !important; box-shadow: none !important; border-radius: 0 !important; background: transparent !important; }
-          .bpe-field.ant-input-number-focused { border-bottom-color: var(--theme-primary) !important; }
+          .bpe-field.ant-input, .bpe-field.ant-input-number { border: none !important; border-bottom: 1px solid #CBD5E1 !important; box-shadow: none !important; border-radius: 0 !important; background: transparent !important; }
+          .bpe-field.ant-input:focus, .bpe-field.ant-input-focused, .bpe-field.ant-input-number-focused { border-bottom-color: var(--theme-primary) !important; }
+          .bpe-bad.ant-input, .bpe-bad.ant-input-number { border-bottom-color: #F87171 !important; }
         `}</style>
         {/* Header */}
         <Breadcrumb
@@ -327,8 +256,7 @@ const BulkProductionEntry: React.FC = () => {
         ) : (
           <Collapse accordion bordered={false} activeKey={activeKey} onChange={(k) => setActiveKey(Array.isArray(k) ? k[0] : k)} style={{ background: 'transparent', display: 'flex', flexDirection: 'column', gap: 10 }} items={employees.map((emp) => {
             const tot = empTotals(emp);
-            const usedCount = emp.products.filter((r) => r.productId).length;
-            const canAddMore = usedCount < prodOptions.length;
+            const usedCount = emp.products.filter((r) => r.work && r.work.trim()).length;
             const incomplete = triedSave && !emp.products.some(isValidRow); // red only after a save attempt
             return {
               key: String(emp.key),
@@ -339,7 +267,7 @@ const BulkProductionEntry: React.FC = () => {
                     <Avatar style={{ background: 'var(--theme-primary)' }}>{initials(emp.employeeName)}</Avatar>
                     <div>
                       <span style={{ fontWeight: 800, color: '#0F172A' }}>{emp.employeeName}</span>
-                      <Tag style={{ marginLeft: 8, borderRadius: 6 }}>{usedCount} {t('production.bulk.productsWord', 'Products')}</Tag>
+                      <Tag style={{ marginLeft: 8, borderRadius: 6 }}>{usedCount} {t('production.bulk.workLines', 'Tasks')}</Tag>
                       {incomplete && <Tag color="error" style={{ marginLeft: 4, borderRadius: 6 }}>{t('production.bulk.dataMissing', 'Data missing')}</Tag>}
                     </div>
                   </div>
@@ -354,16 +282,16 @@ const BulkProductionEntry: React.FC = () => {
               children: (
                 <div>
                   {/* column header */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 150px 90px 90px 110px 40px', gap: 8, padding: '0 0 6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
-                    <span>#</span><span>{t('production.colProduct', 'Product')}</span><span>{t('production.code', 'Code')}</span>
-                    <span>{t('production.colQuantity', 'Quantity')}</span><span style={{ textAlign: 'right' }}>{t('production.rate', 'Rate')}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px 110px 110px 40px', gap: 8, padding: '0 0 6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
+                    <span>#</span><span>{t('production.bulk.work', 'Work')}</span>
+                    <span>{t('production.colQuantity', 'Quantity')}</span><span>{t('production.rate', 'Rate')}</span>
                     <span style={{ textAlign: 'right' }}>{t('common.amount', 'Amount')}</span><span />
                   </div>
                   {emp.products.map((row, idx) => renderRow(emp, row, idx))}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, borderTop: '1px solid #E2E8F0', paddingTop: 10 }}>
-                    <Button type="dashed" icon={<PlusOutlined />} disabled={!canAddMore}
+                    <Button type="dashed" icon={<PlusOutlined />}
                       onClick={() => updateEmp(emp.key, (e) => ({ ...e, products: [...e.products, emptyRow()] }))}>
-                      {canAddMore ? t('production.bulk.addProduct', 'Add Product') : t('production.bulk.allAdded', 'All products added')}
+                      {t('production.bulk.addWork', 'Add Work')}
                     </Button>
                     <span style={{ fontWeight: 700, color: '#0F172A' }}>
                       {t('production.bulk.employeeTotal', 'Employee Total')}: <span style={{ color: 'var(--theme-primary)' }}>{tot.qty} {t('production.pcs', 'Pcs')} · {fmtMoney(tot.amt)}</span>
@@ -382,7 +310,7 @@ const BulkProductionEntry: React.FC = () => {
              <div style={{ fontWeight: 800, color: '#0F172A', marginBottom: 12 }}>{t('production.bulk.summary', 'Summary')}</div>
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                <Stat icon={<TeamOutlined />} label={t('production.bulk.totalEmployees', 'Total Employees')} value={totals.employees} />
-               <Stat icon={<ShoppingOutlined />} label={t('production.bulk.totalProducts', 'Total Products')} value={totals.products} />
+               <Stat icon={<ToolOutlined />} label={t('production.bulk.totalTasks', 'Total Tasks')} value={totals.lines} />
                <Stat icon={<AppstoreOutlined />} label={t('production.totalQuantity', 'Total Quantity')} value={`${totals.qty} ${t('production.pcs', 'Pcs')}`} />
                <Stat icon={<DollarOutlined />} label={t('production.totalAmount', 'Total Amount')} value={fmtMoney(totals.amt)} highlight />
              </div>
@@ -444,7 +372,7 @@ const BulkProductionEntry: React.FC = () => {
         >
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, margin: '8px 0 14px' }}>
             <Stat icon={<TeamOutlined />} label={t('production.bulk.totalEmployees', 'Total Employees')} value={totals.employees} />
-            <Stat icon={<ShoppingOutlined />} label={t('production.bulk.totalProducts', 'Total Products')} value={totals.products} />
+            <Stat icon={<ToolOutlined />} label={t('production.bulk.totalTasks', 'Total Tasks')} value={totals.lines} />
             <Stat icon={<AppstoreOutlined />} label={t('production.totalQuantity', 'Total Quantity')} value={`${totals.qty} ${t('production.pcs', 'Pcs')}`} />
             <Stat icon={<DollarOutlined />} label={t('production.totalAmount', 'Total Amount')} value={fmtMoney(totals.amt)} highlight />
           </div>

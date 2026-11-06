@@ -11,6 +11,9 @@ export interface IEmployee {
   address?: string;
   joiningDate: string;
   active: boolean;
+  paymentType?: 'PIECE_RATE' | 'MONTHLY';
+  monthlySalary?: number;
+  openingAdvance?: number;
   currentMonthEarning?: number;
   totalEarning?: number;
 }
