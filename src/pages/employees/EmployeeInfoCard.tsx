@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, Tag, Divider } from 'antd';
 import HeadingInfo from '../../components/common/HeadingInfo';
 import {
@@ -6,6 +6,10 @@ import {
   HomeOutlined,
   CalendarOutlined,
   MailOutlined,
+  IdcardOutlined,
+  WalletOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { IEmployee } from '../../types/employee.types';
@@ -14,6 +18,9 @@ import { useT } from '../../contexts/LanguageContext';
 interface EmployeeInfoCardProps {
   employee: IEmployee;
 }
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value || 0);
 
 const Detail: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({ icon, label, value }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
@@ -27,10 +34,27 @@ const Detail: React.FC<{ icon: React.ReactNode; label: string; value: React.Reac
 
 export const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({ employee }) => {
   const t = useT();
+  const [showSalary, setShowSalary] = useState(false);
   const getInitials = (name: string) =>
     name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 
   const notProvided = <span style={{ color: '#94A3B8', fontStyle: 'italic', fontSize: '0.82rem' }}>{t('employees.notProvided', 'Not Provided')}</span>;
+
+  const isMonthly = (employee as any).paymentType === 'MONTHLY';
+  const typeNode = (
+    <Tag style={{ margin: 0, fontWeight: 600, border: 'none', color: isMonthly ? 'var(--theme-primary)' : '#475569', background: isMonthly ? 'color-mix(in srgb, var(--theme-primary) 12%, white)' : '#F1F5F9' }}>
+      {isMonthly ? t('employees.info.monthly', 'Monthly') : t('employees.info.pieceRate', 'Piece Rate')}
+    </Tag>
+  );
+  // Monthly salary is masked; click the eye to reveal. Piece-rate shows a dash.
+  const salaryNode = !isMonthly ? <span>–</span> : (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      {showSalary ? formatCurrency((employee as any).monthlySalary ?? 0) : '••••••'}
+      <span onClick={() => setShowSalary((s) => !s)} style={{ cursor: 'pointer', color: '#94A3B8' }}>
+        {showSalary ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+      </span>
+    </span>
+  );
 
   return (
     <Card
@@ -79,24 +103,30 @@ export const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({ employee }) 
 
       <Divider style={{ margin: '10px 0' }} />
 
-      {/* Details in 2 columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
-        <Detail
-          icon={<MailOutlined />}
-          label={t('employees.form.email', 'Email')}
-          value={
-            employee.email ? (
+      {/* Details in 3 columns: contact | contact+date | type+salary */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+          <Detail
+            icon={<MailOutlined />}
+            label={t('employees.form.email', 'Email')}
+            value={employee.email ? (
               <a href={`mailto:${employee.email}`} style={{ color: 'var(--theme-primary)', fontWeight: 500 }}>{employee.email}</a>
-            ) : notProvided
-          }
-        />
-        <Detail icon={<PhoneOutlined />} label={t('employees.info.phone', 'Phone Number')} value={employee.mobileNumber || notProvided} />
-        <Detail icon={<HomeOutlined />} label={t('employees.form.address', 'Address')} value={employee.address || notProvided} />
-        <Detail
-          icon={<CalendarOutlined />}
-          label={t('employees.form.joiningDate', 'Joining Date')}
-          value={employee.joiningDate ? dayjs(employee.joiningDate).format('DD-MMM-YYYY') : '-'}
-        />
+            ) : notProvided}
+          />
+          <Detail icon={<HomeOutlined />} label={t('employees.form.address', 'Address')} value={employee.address || notProvided} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+          <Detail icon={<PhoneOutlined />} label={t('employees.info.phone', 'Phone Number')} value={employee.mobileNumber || notProvided} />
+          <Detail
+            icon={<CalendarOutlined />}
+            label={t('employees.form.joiningDate', 'Joining Date')}
+            value={employee.joiningDate ? dayjs(employee.joiningDate).format('DD-MMM-YYYY') : '-'}
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+          <Detail icon={<IdcardOutlined />} label={t('employees.info.employeeType', 'Employee Type')} value={typeNode} />
+          <Detail icon={<WalletOutlined />} label={t('employees.info.salary', 'Salary')} value={salaryNode} />
+        </div>
       </div>
     </Card>
   );

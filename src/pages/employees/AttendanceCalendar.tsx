@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Calendar, Modal, Button, Tag, DatePicker, Select, Drawer, Empty, notification } from 'antd';
 import { UnorderedListOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -12,10 +12,15 @@ import { useT } from '../../contexts/LanguageContext';
  * Exception-based attendance: every day is PRESENT by default. Click a day to mark it
  * ABSENT / HALF_DAY (or clear it). Only exceptions are stored; used for monthly payroll.
  */
-const AttendanceCalendar: React.FC<{ employeeId: string }> = ({ employeeId }) => {
+const AttendanceCalendar: React.FC<{ employeeId: string; focusDate?: string }> = ({ employeeId, focusDate }) => {
   const t = useT();
   const qc = useQueryClient();
   const [month, setMonth] = useState(dayjs());
+
+  // Jump the calendar to the page's global date filter when it changes.
+  useEffect(() => {
+    if (focusDate) setMonth(dayjs(focusDate));
+  }, [focusDate]);
   const [sel, setSel] = useState<dayjs.Dayjs | null>(null);
   const [range, setRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
   const [rangeStatus, setRangeStatus] = useState<'ABSENT' | 'HALF_DAY' | 'PRESENT'>('ABSENT');
@@ -63,7 +68,12 @@ const AttendanceCalendar: React.FC<{ employeeId: string }> = ({ employeeId }) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listData, listFilter]);
 
-  const refetch = () => qc.invalidateQueries({ queryKey: ['attendance', employeeId] });
+  // Attendance changes affect leave cards, summary and salary slips — refresh them all.
+  const refetch = () => {
+    qc.invalidateQueries({ queryKey: ['attendance', employeeId] });
+    qc.invalidateQueries({ queryKey: ['payroll', employeeId] });
+    qc.invalidateQueries({ queryKey: ['employeeDetails', employeeId] });
+  };
   const clearRange = async (fromDate: string, toDate: string) => {
     const days: string[] = [];
     let d = dayjs(fromDate);

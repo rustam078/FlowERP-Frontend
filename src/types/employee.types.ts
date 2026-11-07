@@ -16,6 +16,8 @@ export interface IEmployee {
   openingAdvance?: number;
   currentMonthEarning?: number;
   totalEarning?: number;
+  advanceBalance?: number;
+  pending?: number;
 }
 
 export interface IEmployeeFormInput {

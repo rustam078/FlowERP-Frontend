@@ -5,7 +5,9 @@ import {
   DollarCircleOutlined,
   WalletOutlined,
   AppstoreOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { IEmployeeSummary } from '../../types/employee-details.types';
 import { useT } from '../../contexts/LanguageContext';
 
@@ -30,6 +32,7 @@ const cardStyle = {
 
 interface SummaryCardProps {
   summary: IEmployeeSummary;
+  joiningDate?: string;
 }
 
 export const PremiumSummaryCard: React.FC<SummaryCardProps> = ({ summary }) => {
@@ -105,17 +108,25 @@ export const PremiumSummaryCard: React.FC<SummaryCardProps> = ({ summary }) => {
   );
 };
 
-export const OverallSummaryCard: React.FC<SummaryCardProps> = ({ summary }) => {
+export const OverallSummaryCard: React.FC<SummaryCardProps> = ({ summary, joiningDate }) => {
   const t = useT();
   const qty = summary.totalProductionQty || 0;
   const earnings = summary.totalEarnings || 0;
-  const avgPerPiece = qty > 0 ? earnings / qty : 0;
+
+  // Tenure since joining, e.g. "11 mo" or "1 yr 2 mo".
+  const months = joiningDate ? Math.max(0, dayjs().diff(dayjs(joiningDate), 'month')) : 0;
+  const years = Math.floor(months / 12);
+  const remMonths = months % 12;
+  const tenure = !joiningDate ? '-'
+    : years > 0
+      ? `${years} ${t('employees.summary.yr', 'yr')} ${remMonths} ${t('employees.summary.mo', 'mo')}`
+      : `${remMonths} ${t('employees.summary.mo', 'mo')}`;
 
   const tiles = [
     { icon: <InboxOutlined />, color: 'var(--theme-primary)', bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)', label: t('employees.summary.totalProduction', 'Total Production'), value: `${qty.toLocaleString('en-IN')} ${t('employees.pcs', 'Pcs')}` },
     { icon: <DollarCircleOutlined />, color: 'var(--theme-primary)', bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)', label: t('employees.summary.totalEarnings', 'Total Earnings'), value: formatCurrency(earnings) },
-    { icon: <AppstoreOutlined />, color: 'var(--theme-primary)', bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)', label: t('employees.summary.productsWorkedOn', 'Products Worked On'), value: `${summary.productsWorkedOn}` },
-    { icon: <WalletOutlined />, color: 'var(--theme-primary)', bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)', label: t('employees.summary.avgPerPiece', 'Avg / Piece'), value: formatCurrency(avgPerPiece) },
+    { icon: <AppstoreOutlined />, color: 'var(--theme-primary)', bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)', label: t('employees.summary.items', 'Items'), value: `${summary.productsWorkedOn}` },
+    { icon: <ClockCircleOutlined />, color: 'var(--theme-primary)', bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)', label: t('employees.summary.experience', 'Experience'), value: tenure },
   ];
 
   return (

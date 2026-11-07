@@ -66,4 +66,23 @@ export const employeeService = {
     const response = await axiosInstance.delete(`/employees/${id}/attendance`, { params: { date } });
     return response.data;
   },
+
+  // ── Payroll (pay-slips + advances/settlements), server-side paged/filtered ──
+  getPayroll: async (id: string, params?: Record<string, any>) => {
+    const response = await axiosInstance.get(`/employees/${id}/payroll`, { params });
+    return response.data;
+  },
+  recordLedger: async (id: string, entry: { entryDate: string; type: 'ADVANCE' | 'PAYOUT'; amount: number; mode?: string; note?: string; period?: string }) => {
+    const response = await axiosInstance.post(`/employees/${id}/ledger`, entry);
+    return response.data;
+  },
+  deleteLedger: async (id: string, entryId: string) => {
+    const response = await axiosInstance.delete(`/employees/${id}/ledger/${entryId}`);
+    return response.data;
+  },
+  // Give an advance to several employees at once.
+  bulkAdvance: async (payload: { entryDate: string; mode?: string; note?: string; items: { employeeId: string; amount: number }[] }) => {
+    const response = await axiosInstance.post(`/employees/advances/bulk`, payload);
+    return response.data;
+  },
 };

@@ -124,7 +124,6 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
           label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.email', 'Email')}</span>}
           validateTrigger="onBlur"
           rules={[
-            { required: true, message: t('employees.form.emailRequired', 'Email is required.') },
             { type: 'email', message: t('employees.form.emailInvalid', 'Please enter a valid email format.') },
           ]}
         >
@@ -170,23 +169,41 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
           </Select>
         </Form.Item>
 
+        {/* Monthly salary + advance side by side */}
         <Form.Item noStyle shouldUpdate={(p, c) => p.paymentType !== c.paymentType}>
-          {() => form.getFieldValue('paymentType') === 'MONTHLY' && (
-            <Form.Item
-              name="monthlySalary"
-              label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.monthlySalary', 'Monthly Salary')}</span>}
-              rules={[{ required: true, message: t('employees.form.salaryRequired', 'Monthly salary is required.') }]}
-            >
-              <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
-            </Form.Item>
-          )}
-        </Form.Item>
-
-        <Form.Item
-          name="openingAdvance"
-          label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.openingAdvance', 'Opening Advance')} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{t('products.optional', '(optional)')}</span></span>}
-        >
-          <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+          {() => {
+            const monthly = form.getFieldValue('paymentType') === 'MONTHLY';
+            return (
+              <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+                {monthly && (
+                  <Form.Item
+                    name="monthlySalary"
+                    label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.monthlySalary', 'Monthly Salary')}</span>}
+                    rules={[{ required: true, message: t('employees.form.salaryRequired', 'Monthly salary is required.') }]}
+                    style={{ flex: 1, marginBottom: 0 }}
+                  >
+                    <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                  </Form.Item>
+                )}
+                {isEdit ? (
+                  <Form.Item
+                    label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.advanceCurrent', 'Advance (current)')}</span>}
+                    style={{ flex: 1, marginBottom: 0 }}
+                  >
+                    <InputNumber value={employee?.advanceBalance ?? 0} disabled size="large" addonBefore={getCurrencySymbol()} style={{ width: '100%' }} />
+                  </Form.Item>
+                ) : (
+                  <Form.Item
+                    name="openingAdvance"
+                    label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.openingAdvance', 'Opening Advance')} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{t('products.optional', '(optional)')}</span></span>}
+                    style={{ flex: 1, marginBottom: 0 }}
+                  >
+                    <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                  </Form.Item>
+                )}
+              </div>
+            );
+          }}
         </Form.Item>
 
         <Form.Item

@@ -35,6 +35,7 @@ import { useNavigate } from 'react-router-dom';
 import { employeeService } from '../../services/employee.service';
 import { IEmployee } from '../../types/employee.types';
 import { EmployeeFormDrawer } from './EmployeeFormDrawer';
+import BulkAdvanceDrawer from './BulkAdvanceDrawer';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useT } from '../../contexts/LanguageContext';
 
@@ -47,6 +48,7 @@ const EmployeePage: React.FC = () => {
   
   // Drawer visibility states
   const [formDrawerVisible, setFormDrawerVisible] = useState(false);
+  const [bulkAdvanceVisible, setBulkAdvanceVisible] = useState(false);
   
   // Selected employee for view/edit operations
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
@@ -211,7 +213,7 @@ const EmployeePage: React.FC = () => {
       title: t('employees.table.employeeName', 'Employee Name'),
       dataIndex: 'fullName',
       key: 'fullName',
-      width: '18%',
+      width: 150,
       sorter: (a: IEmployee, b: IEmployee) => a.fullName.localeCompare(b.fullName),
       render: (name: string) => <span style={{ fontWeight: 600, color: '#0F172A' }}>{name}</span>,
     },
@@ -219,7 +221,7 @@ const EmployeePage: React.FC = () => {
       title: t('employees.table.email', 'Email'),
       dataIndex: 'email',
       key: 'email',
-      width: '18%',
+      width: 200,
       render: (email?: string) => email ? (
         <a href={`mailto:${email}`} style={{ color: 'var(--theme-primary)', fontWeight: 500 }} onClick={(e) => e.stopPropagation()}>
           {email}
@@ -240,6 +242,16 @@ const EmployeePage: React.FC = () => {
       ),
     },
     {
+      title: t('employees.info.employeeType', 'Employee Type'),
+      dataIndex: 'paymentType',
+      key: 'paymentType',
+      width: 125,
+      render: (pt?: string) => {
+        const monthly = pt === 'MONTHLY';
+        return <Tag style={{ fontWeight: 600, margin: 0, border: 'none', color: monthly ? 'var(--theme-primary)' : '#475569', background: monthly ? 'color-mix(in srgb, var(--theme-primary) 12%, white)' : '#F1F5F9' }}>{monthly ? t('employees.info.monthly', 'Monthly') : t('employees.info.pieceRate', 'Piece Rate')}</Tag>;
+      },
+    },
+    {
       title: t('common.status', 'Status'),
       dataIndex: 'active',
       key: 'active',
@@ -258,10 +270,21 @@ const EmployeePage: React.FC = () => {
       ),
     },
     {
-      title: t('employees.table.currentMonthEarning', 'Current Month Earning'),
+      title: t('employees.payroll.advance', 'Advance'),
+      dataIndex: 'advanceBalance',
+      key: 'advanceBalance',
+      width: 115,
+      align: 'left' as const,
+      sorter: (a: IEmployee, b: IEmployee) => ((a as any).advanceBalance ?? 0) - ((b as any).advanceBalance ?? 0),
+      render: (val?: number) => (
+        <span style={{ color: '#475569', fontWeight: 600 }}>{formatIndianCurrency(val ?? 0)}</span>
+      ),
+    },
+    {
+      title: t('employees.table.thisMonth', 'This Month'),
       dataIndex: 'currentMonthEarning',
       key: 'currentMonthEarning',
-      width: '15%',
+      width: 115,
       align: 'left' as const,
       sorter: (a: IEmployee, b: IEmployee) => (a.currentMonthEarning ?? 0) - (b.currentMonthEarning ?? 0),
       render: (val?: number) => (
@@ -271,10 +294,23 @@ const EmployeePage: React.FC = () => {
       ),
     },
     {
-      title: t('employees.table.overallEarning', 'Overall Earning'),
+      title: t('employees.table.remaining', 'Remaining'),
+      dataIndex: 'pending',
+      key: 'pending',
+      width: 115,
+      align: 'left' as const,
+      sorter: (a: IEmployee, b: IEmployee) => ((a as any).pending ?? 0) - ((b as any).pending ?? 0),
+      render: (val?: number) => (
+        <span style={{ color: (val ?? 0) > 0 ? '#DC2626' : '#94A3B8', fontWeight: 700 }}>
+          {formatIndianCurrency((val ?? 0) > 0 ? (val as number) : 0)}
+        </span>
+      ),
+    },
+    {
+      title: t('employees.table.totalPaid', 'Total Paid'),
       dataIndex: 'totalEarning',
       key: 'totalEarning',
-      width: '15%',
+      width: 120,
       align: 'left' as const,
       sorter: (a: IEmployee, b: IEmployee) => (a.totalEarning ?? 0) - (b.totalEarning ?? 0),
       render: (val?: number) => (
@@ -340,6 +376,15 @@ const EmployeePage: React.FC = () => {
               onChange={(e) => setSearchText(e.target.value)}
               allowClear
             />
+            {can('employees', 'write') && (
+              <Button
+                icon={<WalletOutlined />}
+                style={{ fontWeight: 600, borderRadius: 6, height: 40 }}
+                onClick={() => setBulkAdvanceVisible(true)}
+              >
+                {t('employees.expense.title', 'Add Expense')}
+              </Button>
+            )}
             {can('employees', 'write') && (
               <Button
                 type="primary"
@@ -474,6 +519,17 @@ const EmployeePage: React.FC = () => {
           employee={selectedEmployee}
           onSubmit={handleFormSubmit}
           loading={createMutation.isPending || updateMutation.isPending}
+        />
+
+        <BulkAdvanceDrawer
+          open={bulkAdvanceVisible}
+          onClose={() => setBulkAdvanceVisible(false)}
+          employees={employees}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['employees'] });
+            queryClient.invalidateQueries({ queryKey: ['payroll'] });
+            queryClient.invalidateQueries({ queryKey: ['employeeDetails'] });
+          }}
         />
       </Box>
     </ConfigProvider>

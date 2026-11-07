@@ -19,6 +19,7 @@ export default {
   'common.search': 'खोजें',
   'common.filters': 'फ़िल्टर',
   'common.reset': 'रीसेट',
+  'common.apply': 'लागू करें',
   'common.done': 'हो गया',
   'common.close': 'बंद करें',
   'common.download': 'डाउनलोड',

@@ -37,6 +37,7 @@ import { EmployeeInfoCard } from './EmployeeInfoCard';
 import { OverallSummaryCard, CurrentMonthSummaryCard } from './EmployeeSummaryCards';
 import { EmployeeProductionHistoryTable } from './EmployeeProductionHistoryTable';
 import AttendanceCalendar from './AttendanceCalendar';
+import PayrollAccountCard from './PayrollAccountCard';
 import { CurrentMonthProductPerformance } from './CurrentMonthProductPerformance';
 import { ProductWiseEarningsList } from './ProductWiseEarningsList';
 import { EmployeeEarningsChart } from './EmployeeEarningsChart';
@@ -579,7 +580,7 @@ const EmployeeDetailsPage: React.FC = () => {
                 <EmployeeInfoCard employee={employee} />
               </div>
               <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-                <OverallSummaryCard summary={summary} />
+                <OverallSummaryCard summary={summary} joiningDate={employee?.joiningDate} />
               </div>
             </div>
           </Col>
@@ -591,19 +592,26 @@ const EmployeeDetailsPage: React.FC = () => {
           </Col>
         </Row>
 
-        {/* Earnings trend (piece-rate) + Attendance, side by side (50-50) */}
+        {/* Payroll account (left) + Attendance (right), side by side (50-50) */}
         <Row gutter={[14, 14]} style={{ marginBottom: 8, display: 'flex', alignItems: 'stretch' }}>
-          {!isMonthly && (
-            <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
-              <EmployeeEarningsChart data={monthlyEarnings} />
-            </Col>
-          )}
-          <Col xs={24} lg={isMonthly ? 24 : 12} style={{ display: 'flex', flexDirection: 'column' }}>
+          <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
+            {employeeId && <PayrollAccountCard employeeId={employeeId} fromDate={filterRange.fromDate} toDate={filterRange.toDate} />}
+          </Col>
+          <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
             <Card style={{ ...cardStyle, height: '100%' }} bodyStyle={{ padding: 20 }} title={t('employees.attendance.title', 'Attendance')}>
-              {employeeId && <AttendanceCalendar employeeId={employeeId} />}
+              {employeeId && <AttendanceCalendar employeeId={employeeId} focusDate={filterRange.fromDate} />}
             </Card>
           </Col>
         </Row>
+
+        {/* Earnings trend below (piece-rate employees only) */}
+        {!isMonthly && (
+          <Row gutter={[14, 14]} style={{ marginBottom: 8 }}>
+            <Col xs={24}>
+              <EmployeeEarningsChart data={monthlyEarnings} />
+            </Col>
+          </Row>
+        )}
 
         {/* Piece-work history (piece-rate employees only) */}
         {!isMonthly && (

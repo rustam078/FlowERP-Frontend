@@ -77,6 +77,9 @@ function normalizeDetailsResponse(
     address: rawEmp.address,
     joiningDate: rawEmp.joiningDate || '',
     active: rawEmp.active ?? true,
+    paymentType: rawEmp.paymentType,
+    monthlySalary: rawEmp.monthlySalary,
+    openingAdvance: rawEmp.openingAdvance,
   };
 
   // 2. Normalize production history items
@@ -117,6 +120,7 @@ function normalizeDetailsResponse(
     totalEarnings,
     currentMonthEarnings,
     productsWorkedOn,
+    currentMonthLeaveDays: Number(rawSummary.currentMonthLeaveDays ?? 0),
   };
 
   // 4. Normalize product summary breakdown

@@ -8,6 +8,7 @@ export interface IEmployeeSummary {
   totalEarnings: number;
   currentMonthEarnings: number;
   productsWorkedOn: number;
+  currentMonthLeaveDays?: number;
 }
 
 /**

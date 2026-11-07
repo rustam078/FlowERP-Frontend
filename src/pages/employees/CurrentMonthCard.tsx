@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Divider, Empty, Steps } from 'antd';
-import { WalletOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { WalletOutlined, AppstoreOutlined, CalendarOutlined } from '@ant-design/icons';
 import HeadingInfo from '../../components/common/HeadingInfo';
 import { IEmployeeSummary, ICurrentMonthProductSummary } from '../../types/employee-details.types';
 import ProductLabel from '../../components/common/ProductLabel';
@@ -41,6 +41,7 @@ interface Props {
 export const CurrentMonthCard: React.FC<Props> = ({ summary, products = [] }) => {
   const t = useT();
   const worked = summary?.productsWorkedOn ?? 0;
+  const leaveDays = summary?.currentMonthLeaveDays ?? 0;
   return (
     <Card
       style={cardStyle}
@@ -53,7 +54,7 @@ export const CurrentMonthCard: React.FC<Props> = ({ summary, products = [] }) =>
       styles={{ header: { minHeight: 40 }, body: { padding: 12, flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
     >
       {/* Summary stats */}
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Stat
           icon={<WalletOutlined style={{ color: 'var(--theme-primary)', fontSize: 15 }} />}
           bg="color-mix(in srgb, var(--theme-primary) 12%, white)"
@@ -65,8 +66,15 @@ export const CurrentMonthCard: React.FC<Props> = ({ summary, products = [] }) =>
           icon={<AppstoreOutlined style={{ color: 'var(--theme-primary)', fontSize: 15 }} />}
           bg="color-mix(in srgb, var(--theme-primary) 12%, white)"
           color="var(--theme-primary)"
-          label={t('employees.products', 'Products')}
+          label={t('employees.summary.items', 'Items')}
           value={worked}
+        />
+        <Stat
+          icon={<CalendarOutlined style={{ color: leaveDays > 0 ? '#DC2626' : 'var(--theme-primary)', fontSize: 15 }} />}
+          bg={leaveDays > 0 ? 'color-mix(in srgb, #DC2626 10%, white)' : '#F8FAFC'}
+          color={leaveDays > 0 ? '#DC2626' : 'var(--theme-primary)'}
+          label={t('employees.summary.leaveThisMonth', 'Leave (this month)')}
+          value={`${leaveDays} ${t('employees.summary.days', 'days')}`}
         />
       </div>
 

@@ -20,6 +20,7 @@ export default {
   'common.search': 'Search',
   'common.filters': 'Filters',
   'common.reset': 'Reset',
+  'common.apply': 'Apply',
   'common.done': 'Done',
   'common.close': 'Close',
   'common.download': 'Download',
