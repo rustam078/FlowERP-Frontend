@@ -206,14 +206,14 @@ const EmployeePage: React.FC = () => {
       title: t('employees.employeeCode', 'Employee Code'),
       dataIndex: 'employeeCode',
       key: 'employeeCode',
-      width: '12%',
+      width: 120,
       render: (code: string) => <span style={{ fontWeight: 700, color: '#0F172A' }}>{code}</span>,
     },
     {
       title: t('employees.table.employeeName', 'Employee Name'),
       dataIndex: 'fullName',
       key: 'fullName',
-      width: 150,
+      width: 200,
       sorter: (a: IEmployee, b: IEmployee) => a.fullName.localeCompare(b.fullName),
       render: (name: string) => <span style={{ fontWeight: 600, color: '#0F172A' }}>{name}</span>,
     },
@@ -234,7 +234,7 @@ const EmployeePage: React.FC = () => {
       title: t('employees.table.mobile', 'Mobile'),
       dataIndex: 'mobileNumber',
       key: 'mobileNumber',
-      width: '10%',
+      width: 120,
       render: (mobile?: string) => mobile ? (
         <span style={{ color: '#0F172A', fontWeight: 500 }}>{mobile}</span>
       ) : (
@@ -245,7 +245,7 @@ const EmployeePage: React.FC = () => {
       title: t('employees.info.employeeType', 'Employee Type'),
       dataIndex: 'paymentType',
       key: 'paymentType',
-      width: 125,
+      width: 120,
       render: (pt?: string) => {
         const monthly = pt === 'MONTHLY';
         return <Tag style={{ fontWeight: 600, margin: 0, border: 'none', color: monthly ? 'var(--theme-primary)' : '#475569', background: monthly ? 'color-mix(in srgb, var(--theme-primary) 12%, white)' : '#F1F5F9' }}>{monthly ? t('employees.info.monthly', 'Monthly') : t('employees.info.pieceRate', 'Piece Rate')}</Tag>;
@@ -255,7 +255,7 @@ const EmployeePage: React.FC = () => {
       title: t('common.status', 'Status'),
       dataIndex: 'active',
       key: 'active',
-      width: '10%',
+      width: 120,
       filters: [
         { text: t('employees.status.active', 'Active'), value: true },
         { text: t('employees.status.inactive', 'Inactive'), value: false },
@@ -322,7 +322,7 @@ const EmployeePage: React.FC = () => {
     {
       title: t('common.actions', 'Actions'),
       key: 'actions',
-      width: '10%',
+      width: 120,
       render: (_: any, record: IEmployee) => (
         <Space size={4} align="center">
           {can('employees', 'write') && (
