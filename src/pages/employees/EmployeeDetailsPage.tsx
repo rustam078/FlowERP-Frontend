@@ -38,6 +38,10 @@ import { OverallSummaryCard, CurrentMonthSummaryCard } from './EmployeeSummaryCa
 import { EmployeeProductionHistoryTable } from './EmployeeProductionHistoryTable';
 import AttendanceCalendar from './AttendanceCalendar';
 import PayrollAccountCard from './PayrollAccountCard';
+import SalaryOverviewPanel from './SalaryOverviewPanel';
+import PayrollSummaryCards from './PayrollSummaryCards';
+import { useQuery as usePayrollQuery } from '@tanstack/react-query';
+import { employeeService as employeeSvc } from '../../services/employee.service';
 import { CurrentMonthProductPerformance } from './CurrentMonthProductPerformance';
 import { ProductWiseEarningsList } from './ProductWiseEarningsList';
 import { EmployeeEarningsChart } from './EmployeeEarningsChart';
@@ -164,19 +168,6 @@ const EmployeeDetailsPage: React.FC = () => {
   const calendarFromDate = filterRange.fromDate || localCalendarDates.fromDate;
   const calendarToDate = filterRange.toDate || localCalendarDates.toDate;
 
-  // Download this employee's report for the selected range (defaults to the current month).
-  const handleDownloadReport = async (format: 'pdf' | 'excel') => {
-    if (!employeeId) return;
-    const range = filterRange.fromDate && filterRange.toDate
-      ? { fromDate: filterRange.fromDate, toDate: filterRange.toDate }
-      : currentMonthRange();
-    try {
-      await employeeDetailsService.downloadEmployeeReport(format, employeeId, range.fromDate, range.toDate);
-    } catch (e: any) {
-      notification.error({ message: t('employees.toast.reportFailed', 'Report download failed'), description: e.message, placement: 'topRight' });
-    }
-  };
-
   // Update calendar month focus when the query range changes
   useEffect(() => {
     if (calendarFromDate) {
@@ -213,6 +204,44 @@ const EmployeeDetailsPage: React.FC = () => {
 
   const data = detailsResponse?.data;
   const currentMonthData = currentMonthResponse?.data;
+
+  // Page-level payroll totals for the summary cards + Salary Overview panel.
+  const { data: payrollResp } = usePayrollQuery({
+    queryKey: ['payroll', employeeId, 'overview'],
+    queryFn: () => employeeSvc.getPayroll(employeeId!, { txnSize: 5, slipSize: 10 }),
+    enabled: !!employeeId,
+  });
+  const payroll = payrollResp?.data;
+  // Undefined = let the card pick its first tab (slips for monthly, piece for piece-rate).
+  const [activeTab, setActiveTab] = React.useState<string | undefined>(undefined);
+  // Bumped by "Record Leave" to open the apply-leave modal in the attendance tab.
+  const [leaveSignal, setLeaveSignal] = React.useState(0);
+
+  // Date filter shown inside the employee header card (top-right).
+  const filterControls = (
+    <Space size="small" wrap>
+      <Select value={filterType} onChange={(v) => handleFilterTypeChange(v)} style={{ width: 170 }}
+        suffixIcon={<FilterOutlined style={{ color: 'var(--theme-primary)' }} />}
+        options={[
+          { value: 'current-month', label: t('employees.filter.currentMonth', 'Current Month') },
+          { value: 'month', label: t('employees.filter.selectMonth', 'Select Month') },
+          { value: 'custom', label: t('employees.filter.customRange', 'Custom Range') },
+          { value: 'all', label: t('employees.filter.showAll', 'Show All') },
+        ]}
+      />
+      {filterType === 'month' && (
+        <DatePicker picker="month" value={selectedMonth} onChange={handleMonthChange}
+          disabledDate={(c) => c && c.isAfter(currentDateBase, 'month')} format="MMM YYYY" allowClear={false} style={{ width: 170 }} />
+      )}
+      {filterType === 'custom' && (
+        <>
+          <RangePicker value={pickerDates} onChange={(d) => setPickerDates(d as any)} format="DD-MMM-YYYY" allowClear={false}
+            disabledDate={(c) => c && c.isAfter(currentDateBase, 'day')} style={{ width: 250 }} />
+          <Button type="primary" onClick={handleApplyFilter} disabled={!pickerDates || !pickerDates[0] || !pickerDates[1]}>{t('employees.filter.apply', 'Apply')}</Button>
+        </>
+      )}
+    </Space>
+  );
 
   // Build Calendar data map for easy date cell lookup
   const calendarDataMap = useMemo(() => {
@@ -463,164 +492,37 @@ const EmployeeDetailsPage: React.FC = () => {
       }}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {/* ==================================================
-            HEADER & FILTER SECTION
-            ================================================== */}
-        <Card style={cardStyle} bodyStyle={{ padding: '10px 16px' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 16,
-            }}
-          >
-            {/* Left: Employee Info & Navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <Button
-                type="text"
-                icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/employees')}
-                style={{ fontWeight: 600, color: '#475569', display: 'flex', alignItems: 'center' }}
-              >
-                {t('common.back', 'Back')}
-              </Button>
-              <Dropdown
-                trigger={['click']}
-                menu={{
-                  items: [
-                    { key: 'pdf', icon: <FilePdfOutlined style={{ color: '#DC2626' }} />, label: t('employees.download.pdf', 'Download PDF'), onClick: () => handleDownloadReport('pdf') },
-                    { key: 'excel', icon: <FileExcelOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('employees.download.excel', 'Download Excel'), onClick: () => handleDownloadReport('excel') },
-                  ],
-                }}
-              >
-                <Button icon={<DownloadOutlined />} style={{ borderRadius: 6, fontWeight: 600 }}>
-                  {t('employees.download.report', 'Download report')}
-                </Button>
-              </Dropdown>
-            </div>
+        {/* Back to employee list */}
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/employees')} style={{ alignSelf: 'flex-start', fontWeight: 600, color: '#475569', paddingLeft: 0 }}>
+          {t('common.back', 'Back')}
+        </Button>
 
-            {/* Right: Date Filters */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <Space size="middle" align="center" style={{ flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FilterOutlined style={{ color: 'var(--theme-primary)' }} />
-                  {t('employees.filter.label', 'Filter by:')}
-                </span>
-                <Select
-                  value={filterType}
-                  onChange={(value) => handleFilterTypeChange(value)}
-                  style={{ width: 160, borderRadius: 6 }}
-                  options={[
-                    { value: 'current-month', label: t('employees.filter.currentMonth', 'Current Month') },
-                    { value: 'month', label: t('employees.filter.selectMonth', 'Select Month') },
-                    { value: 'custom', label: t('employees.filter.customRange', 'Custom Range') },
-                    { value: 'all', label: t('employees.filter.showAll', 'Show All') },
-                  ]}
-                />
+        {/* Employee info + filter (top-right) + summary cards — all in one card */}
+        <EmployeeInfoCard
+          employee={employee}
+          extra={filterControls}
+          footer={payroll ? <PayrollSummaryCards payroll={payroll} /> : undefined}
+        />
 
-                {filterType === 'month' && (
-                  <DatePicker
-                    picker="month"
-                    value={selectedMonth}
-                    onChange={handleMonthChange}
-                    disabledDate={(current) => {
-                      // Do not allow future month/year selections (current local date is June 25, 2026)
-                      const maxDate = currentDateBase;
-                      return current && current.isAfter(maxDate, 'month');
-                    }}
-                    format="MMMM YYYY"
-                    allowClear={false}
-                    style={{ width: 180, borderRadius: 6 }}
-                  />
-                )}
-
-                {filterType === 'custom' && (
-                  <RangePicker
-                    value={pickerDates}
-                    onChange={(dates) => setPickerDates(dates as any)}
-                    format="DD-MMM-YYYY"
-                    style={{ minWidth: 260, borderRadius: 6 }}
-                    allowClear={false}
-                    disabledDate={(current) => {
-                      // Do not allow future date selections (current local date is June 25, 2026)
-                      const maxDate = currentDateBase;
-                      return current && current.isAfter(maxDate, 'day');
-                    }}
-                  />
-                )}
-              </Space>
-              
-              {filterType === 'custom' && (
-                <Space size="small">
-                  <Button
-                    type="primary"
-                    onClick={handleApplyFilter}
-                    disabled={!pickerDates || !pickerDates[0] || !pickerDates[1]}
-                    style={{ borderRadius: 6, fontWeight: 600 }}
-                  >
-                    {t('employees.filter.apply', 'Apply Filter')}
-                  </Button>
-                </Space>
-              )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Row 1: left column (compact Employee details + Overall stacked) · right column (Current Month).
-            Left cards keep their natural height and do not stretch to the Current Month card. */}
-        <style>{`@media (min-width: 992px) { .emp-left-stack { height: 440px; } }`}</style>
-        <Row gutter={[14, 14]} style={{ display: 'flex', alignItems: 'flex-start' }}>
-          <Col xs={24} lg={16}>
-            {/* On desktop the stack matches the Current Month card height; Overall
-                Summary flex-grows to fill the space left below the Employee card. */}
-            <div className="emp-left-stack" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ flexShrink: 0 }}>
-                <EmployeeInfoCard employee={employee} />
-              </div>
-              <div style={{ flex: '1 1 auto', minHeight: 0 }}>
-                <OverallSummaryCard summary={summary} joiningDate={employee?.joiningDate} />
-              </div>
-            </div>
+        {/* Payroll tabs (left: Transaction / Payslip / Piece Work / Attendance) + Salary Overview (right) */}
+        <Row gutter={[14, 14]} style={{ marginBottom: 8, display: 'flex', alignItems: 'stretch' }}>
+          <Col xs={24} lg={16} style={{ display: 'flex', flexDirection: 'column' }}>
+            {employeeId && (
+              <PayrollAccountCard
+                employeeId={employeeId}
+                fromDate={filterRange.fromDate}
+                toDate={filterRange.toDate}
+                productionHistory={productionHistory}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                leaveSignal={leaveSignal}
+              />
+            )}
           </Col>
           <Col xs={24} lg={8} style={{ display: 'flex', flexDirection: 'column' }}>
-            <CurrentMonthCard
-              summary={currentMonthData?.summary ?? summary}
-              products={currentMonthData?.currentMonthProductSummary ?? []}
-            />
+            {employeeId && <SalaryOverviewPanel employeeId={employeeId} payroll={payroll} isMonthly={isMonthly} onRecordLeave={() => { setActiveTab('attendance'); setLeaveSignal((s) => s + 1); }} />}
           </Col>
         </Row>
-
-        {/* Payroll account (left) + Attendance (right), side by side (50-50) */}
-        <Row gutter={[14, 14]} style={{ marginBottom: 8, display: 'flex', alignItems: 'stretch' }}>
-          <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
-            {employeeId && <PayrollAccountCard employeeId={employeeId} fromDate={filterRange.fromDate} toDate={filterRange.toDate} />}
-          </Col>
-          <Col xs={24} lg={12} style={{ display: 'flex', flexDirection: 'column' }}>
-            <Card style={{ ...cardStyle, height: '100%' }} bodyStyle={{ padding: 20 }} title={t('employees.attendance.title', 'Attendance')}>
-              {employeeId && <AttendanceCalendar employeeId={employeeId} focusDate={filterRange.fromDate} />}
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Earnings trend below (piece-rate employees only) */}
-        {!isMonthly && (
-          <Row gutter={[14, 14]} style={{ marginBottom: 8 }}>
-            <Col xs={24}>
-              <EmployeeEarningsChart data={monthlyEarnings} />
-            </Col>
-          </Row>
-        )}
-
-        {/* Piece-work history (piece-rate employees only) */}
-        {!isMonthly && (
-          <Row gutter={[14, 14]} style={{ marginBottom: 8 }}>
-            <Col xs={24}>
-              <EmployeeProductionHistoryTable data={productionHistory} />
-            </Col>
-          </Row>
-        )}
       </Box>
 
       {/* Production Details Drawer */}

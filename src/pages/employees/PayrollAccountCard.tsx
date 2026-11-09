@@ -1,20 +1,36 @@
 import React, { useState } from 'react';
-import { Card, Button, Tag, Tabs, Table, Modal, Form, DatePicker, InputNumber, Select, Input, Tooltip, Popconfirm, Popover, Badge, notification } from 'antd';
-import { PlusOutlined, DownloadOutlined, PrinterOutlined, MailOutlined, DeleteOutlined, CheckOutlined, FilterOutlined } from '@ant-design/icons';
+import { Card, Button, Tag, Tabs, Table, DatePicker, Select, Tooltip, Popconfirm, Popover, Badge, notification } from 'antd';
+import { DownloadOutlined, PrinterOutlined, MailOutlined, DeleteOutlined, CheckOutlined, FilterOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { employeeService } from '../../services/employee.service';
 import { useT } from '../../contexts/LanguageContext';
+import AttendanceCalendar from './AttendanceCalendar';
+import { EmployeeProductionHistoryTable } from './EmployeeProductionHistoryTable';
+import SettlePaymentModal from './SettlePaymentModal';
+import { printPdfFromUrl } from '../../utils/printPdf';
 
 const { RangePicker } = DatePicker;
 
 const inr = (v: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v || 0);
 
-const PAYMENT_MODES = [
-  { value: 'CASH', label: 'Cash' },
-  { value: 'UPI', label: 'UPI' },
-];
+// Pay-slip PDF actions: save to disk, send to printer, or share (device share sheet → WhatsApp/email).
+const saveBlob = (blob: Blob, name: string) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+};
+const printBlob = (blob: Blob) => printPdfFromUrl(URL.createObjectURL(blob));
+const shareBlob = async (blob: Blob, name: string) => {
+  const file = new File([blob], name, { type: 'application/pdf' });
+  const nav: any = navigator;
+  if (nav.canShare && nav.canShare({ files: [file] })) {
+    try { await nav.share({ files: [file], title: name }); return; } catch { /* user cancelled */ }
+  }
+  saveBlob(blob, name); // fallback: download so it can be attached to WhatsApp/email
+};
 
 const cardStyle: React.CSSProperties = {
   borderRadius: 12,
@@ -32,14 +48,22 @@ const STATUS: Record<string, { color: string; key: string; fallback: string }> =
 
 const SCROLL_Y = 300;
 
-const PayrollAccountCard: React.FC<{ employeeId: string; fromDate?: string; toDate?: string }> = ({ employeeId, fromDate, toDate }) => {
+interface PayrollCardProps {
+  employeeId: string;
+  fromDate?: string;
+  toDate?: string;
+  productionHistory?: any[];
+  activeTab?: string;
+  onTabChange?: (k: string) => void;
+  leaveSignal?: number; // bumped by "Record Leave" to open the apply-leave modal in the attendance tab
+}
+
+const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, toDate, productionHistory = [], activeTab, onTabChange, leaveSignal }) => {
   const t = useT();
+  const [internalTab, setInternalTab] = useState<string | undefined>(undefined);
+  const setTab = onTabChange ?? setInternalTab;
   const qc = useQueryClient();
-  const [advanceForm] = Form.useForm();
-  const [payForm] = Form.useForm();
-  const [advanceOpen, setAdvanceOpen] = useState(false);
-  const [paySlip, setPaySlip] = useState<any | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [payTarget, setPayTarget] = useState<any | null>(null); // slip being settled
 
   // Server-side paging/filtering state (1-based current for AntD).
   const [slipPage, setSlipPage] = useState(1);
@@ -73,40 +97,30 @@ const PayrollAccountCard: React.FC<{ employeeId: string; fromDate?: string; toDa
   const isMonthly = payroll?.paymentType === 'MONTHLY';
   const slips = payroll?.slips ?? [];
   const txns = payroll?.transactions ?? [];
-  const pending = payroll?.pending ?? 0;
   const refetch = () => qc.invalidateQueries({ queryKey: ['payroll', employeeId] });
 
-  const openAdvance = () => {
-    advanceForm.resetFields();
-    advanceForm.setFieldsValue({ entryDate: dayjs(), mode: 'CASH' });
-    setAdvanceOpen(true);
-  };
-  const openPay = (slip: any) => {
-    payForm.resetFields();
-    payForm.setFieldsValue({ entryDate: dayjs(), mode: 'CASH', amount: Math.round(slip.due) });
-    setPaySlip(slip);
-  };
+  // Piece-rate pay-slips = each settlement (direct payment / advance adjustment).
+  const { data: setlData } = useQuery({
+    queryKey: ['payroll', employeeId, 'settlements'],
+    queryFn: () => employeeService.getPayroll(employeeId, { txnType: 'SETTLEMENT', txnSize: 200 }),
+    enabled: !!employeeId && !isMonthly,
+    placeholderData: (prev) => prev,
+  });
+  const settlements = setlData?.data?.transactions ?? [];
 
-  const submitAdvance = async () => {
-    const v = await advanceForm.validateFields();
-    setSaving(true);
-    try {
-      await employeeService.recordLedger(employeeId, { entryDate: v.entryDate.format('YYYY-MM-DD'), type: 'ADVANCE', amount: v.amount, mode: v.mode, note: v.note });
-      setAdvanceOpen(false); refetch();
-      notification.success({ message: t('employees.payroll.advanceSaved', 'Advance recorded'), placement: 'topRight' });
-    } finally { setSaving(false); }
-  };
-  const submitPay = async () => {
-    const v = await payForm.validateFields();
-    setSaving(true);
-    try {
-      await employeeService.recordLedger(employeeId, { entryDate: v.entryDate.format('YYYY-MM-DD'), type: 'PAYOUT', amount: v.amount, mode: v.mode, note: v.note, period: paySlip.period });
-      setPaySlip(null); refetch();
-      notification.success({ message: t('employees.payroll.paymentSaved', 'Payment recorded'), placement: 'topRight' });
-    } finally { setSaving(false); }
-  };
   const removeTxn = async (id: string) => { await employeeService.deleteLedger(employeeId, id); refetch(); };
-  const soon = () => notification.info({ message: t('employees.payroll.comingSoon', 'Coming soon'), placement: 'topRight' });
+
+  // Fetch a pay-slip PDF then download / print / share it.
+  const runSlip = async (fetch: () => Promise<Blob>, name: string, kind: 'download' | 'print' | 'send') => {
+    try {
+      const blob = await fetch();
+      if (kind === 'download') saveBlob(blob, name);
+      else if (kind === 'print') printBlob(blob);
+      else await shareBlob(blob, name);
+    } catch {
+      notification.error({ message: t('employees.payroll.payslipFailed', 'Could not generate pay-slip'), placement: 'topRight' });
+    }
+  };
 
   const openFilter = (open: boolean) => {
     if (open) { setTmpFilter(txnFilter); setTmpRange(txnRange); }
@@ -134,17 +148,13 @@ const PayrollAccountCard: React.FC<{ employeeId: string; fromDate?: string; toDa
     </div>
   );
 
-  // Advance balance + pending + filter icon on the right of the tab bar.
-  const tabExtra = (
-    <span style={{ display: 'flex', gap: 16, alignItems: 'center', fontSize: '0.8rem' }}>
-      <span><span style={{ color: '#64748B' }}>{t('employees.payroll.advance', 'Advance')}: </span><b style={{ color: '#0F172A' }}>{inr(payroll?.advanceBalance ?? 0)}</b></span>
-      <span><span style={{ color: '#64748B' }}>{t('employees.payroll.pending', 'Pending')}: </span><b style={{ color: pending > 0 ? '#DC2626' : '#16A34A' }}>{inr(pending > 0 ? pending : 0)}</b></span>
-      <Popover content={filterContent} trigger="click" open={filterOpen} onOpenChange={openFilter} placement="bottomRight" title={t('employees.payroll.filter', 'Filter transactions')}>
-        <Badge dot={filterActive}>
-          <Button size="small" type="text" icon={<FilterOutlined style={{ color: filterActive ? 'var(--theme-primary)' : '#64748B' }} />} />
-        </Badge>
-      </Popover>
-    </span>
+  // Filter icon on the right of the tab bar — only on the Transaction History tab.
+  const filterExtra = (
+    <Popover content={filterContent} trigger="click" open={filterOpen} onOpenChange={openFilter} placement="bottomRight" title={t('employees.payroll.filter', 'Filter transactions')}>
+      <Badge dot={filterActive}>
+        <Button size="small" type="text" icon={<FilterOutlined style={{ color: filterActive ? 'var(--theme-primary)' : '#64748B' }} />} />
+      </Badge>
+    </Popover>
   );
 
   // ── Pay-slips tab ──
@@ -169,55 +179,53 @@ const PayrollAccountCard: React.FC<{ employeeId: string; fromDate?: string; toDa
       title: t('common.actions', 'Actions'), key: 'action',
       render: (_: any, r: any) => (
         <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          {r.due > 0 && <Button size="small" type="primary" icon={<CheckOutlined />} onClick={() => openPay(r)}>{t('employees.payroll.markPaid', 'Pay')}</Button>}
-          <Tooltip title={t('employees.payroll.download', 'Download')}><Button size="small" type="text" icon={<DownloadOutlined />} onClick={soon} /></Tooltip>
-          <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={soon} /></Tooltip>
-          <Tooltip title={t('employees.payroll.email', 'Email')}><Button size="small" type="text" icon={<MailOutlined />} onClick={soon} /></Tooltip>
+          {r.due > 0 && (
+            <Tooltip title={r.payable ? '' : t('employees.payroll.notPayableYet', 'Payable from next month')}>
+              <Button size="small" type="primary" icon={<CheckOutlined />} disabled={!r.payable} onClick={() => setPayTarget(r)}>{t('employees.payroll.markPaid', 'Pay')}</Button>
+            </Tooltip>
+          )}
+          <Tooltip title={t('employees.payroll.download', 'Download')}><Button size="small" type="text" icon={<DownloadOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'download')} /></Tooltip>
+          <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'print')} /></Tooltip>
+          <Tooltip title={t('employees.payroll.send', 'Send')}><Button size="small" type="text" icon={<MailOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'send')} /></Tooltip>
         </div>
       ),
     },
   ];
 
   // ── Transactions tab ──
+  // Advance/Expense/Direct-Payment/Opening = money to the employee (+); settled-from-advance = (−).
   const txnMeta = (type: string) => {
     if (type === 'ADVANCE') return { label: t('employees.payroll.advance', 'Advance'), inflow: true };
     if (type === 'SPEND') return { label: t('employees.payroll.expense', 'Expense'), inflow: true };
     if (type === 'ADVANCE_ADJUSTMENT') return { label: t('employees.payroll.settlement', 'Salary settlement'), inflow: false };
-    return { label: t('employees.payroll.payment', 'Payment'), inflow: false };
+    return { label: t('employees.payroll.directPay', 'Direct Salary Payment'), inflow: true };
   };
   const tagStyle: React.CSSProperties = {
     margin: 0, color: 'var(--theme-primary)',
     background: 'color-mix(in srgb, var(--theme-primary) 10%, white)', border: 'none', fontWeight: 600,
   };
   const txnColumns = [
+    { title: t('common.date', 'Date'), dataIndex: 'entryDate', key: 'date', render: (d: string) => <span style={{ color: '#334155', fontWeight: 600 }}>{dayjs(d).format('DD MMM YYYY')}</span> },
+    { title: t('employees.payroll.type', 'Type'), key: 'type', render: (_: any, e: any) => <Tag style={tagStyle}>{txnMeta(e.type).label}</Tag> },
     {
-      title: t('employees.payroll.transactions', 'Transaction'), key: 'info',
-      render: (_: any, e: any) => {
-        const m = txnMeta(e.type);
-        return (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Tag style={tagStyle}>{m.label}</Tag>
-            <span style={{ color: '#334155', fontWeight: 600 }}>{dayjs(e.entryDate).format('DD MMM YYYY')}</span>
-            {e.mode && <span style={{ color: '#94A3B8', fontSize: '0.78rem' }}>· {e.mode}</span>}
-            {e.note && <span style={{ color: '#64748B', fontSize: '0.78rem' }}>· {e.note}</span>}
-          </span>
-        );
-      },
+      title: t('employees.payroll.paymentMode', 'Payment Mode'), key: 'mode',
+      render: (_: any, e: any) => <span style={{ color: '#64748B' }}>{e.mode || (e.type === 'ADVANCE_ADJUSTMENT' ? t('employees.payroll.advanceAdjustedMode', 'Advance Adjusted') : '—')}</span>,
     },
     {
       title: t('common.amount', 'Amount'), key: 'amount', align: 'right' as const,
       render: (_: any, e: any) => {
         const m = txnMeta(e.type);
-        return <span style={{ fontWeight: 800, color: m.inflow ? '#16A34A' : '#334155' }}>{m.inflow ? '+' : '−'} {inr(e.amount)}</span>;
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+            <span style={{ fontWeight: 800, color: m.inflow ? '#16A34A' : '#DC2626' }}>{m.inflow ? '+' : '−'} {inr(e.amount)}</span>
+            {e.deletable && e.id && (
+              <Popconfirm title={t('common.confirm', 'Confirm')} onConfirm={() => removeTxn(e.id)} okText={t('common.yes', 'Yes')} cancelText={t('common.no', 'No')}>
+                <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            )}
+          </span>
+        );
       },
-    },
-    {
-      title: '', key: 'act', width: 40,
-      render: (_: any, e: any) => (e.deletable && e.id ? (
-        <Popconfirm title={t('common.confirm', 'Confirm')} onConfirm={() => removeTxn(e.id)} okText={t('common.yes', 'Yes')} cancelText={t('common.no', 'No')}>
-          <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
-      ) : null),
     },
   ];
 
@@ -229,61 +237,94 @@ const PayrollAccountCard: React.FC<{ employeeId: string; fromDate?: string; toDa
         scroll={{ y: SCROLL_Y, x: 'max-content' }}
         pagination={{
           current: txnPage, pageSize: txnSize, total: payroll?.txnTotal ?? 0,
-          size: 'small', showSizeChanger: true, pageSizeOptions: ['5', '10', '20'],
+          size: 'small', showSizeChanger: true, pageSizeOptions: ['10', '25', '50', '100'],
         }}
-        onChange={(pg) => { setTxnPage(pg.current || 1); setTxnSize(pg.pageSize || 5); }}
+        onChange={(pg) => { setTxnPage(pg.current || 1); setTxnSize(pg.pageSize || 10); }}
       />
     </div>
   );
 
-  const items = [
-    ...(isMonthly ? [{
-      key: 'slips', label: t('employees.payroll.slips', 'Pay-slips'),
-      children: (
-        <Table
-          size="small" dataSource={slips} columns={slipColumns} rowKey="period"
-          scroll={{ y: SCROLL_Y, x: 'max-content' }}
-          pagination={{
-            current: slipPage, pageSize: slipSize, total: payroll?.slipTotal ?? 0,
-            size: 'small', showSizeChanger: true, pageSizeOptions: ['10', '20', '50'],
-          }}
-          onChange={(pg) => { setSlipPage(pg.current || 1); setSlipSize(pg.pageSize || 10); }}
-        />
-      ),
-    }] : []),
-    { key: 'txns', label: t('employees.payroll.transactions', 'Transactions'), children: transactions },
+  // Tab order: work/slips first (per employee type), attendance second, transactions last.
+  const workTab = isMonthly
+    ? {
+        key: 'slips', label: t('employees.payroll.salaryPayslip', 'Salary Payslip'),
+        children: (
+          <Table
+            size="small" dataSource={slips} columns={slipColumns} rowKey="period"
+            scroll={{ y: SCROLL_Y, x: 'max-content' }}
+            pagination={{
+              current: slipPage, pageSize: slipSize, total: payroll?.slipTotal ?? 0,
+              size: 'small', showSizeChanger: true, pageSizeOptions: ['10', '25', '50', '100'],
+            }}
+            onChange={(pg) => { setSlipPage(pg.current || 1); setSlipSize(pg.pageSize || 10); }}
+          />
+        ),
+      }
+    : {
+        key: 'piece', label: t('employees.payroll.pieceWorkHistory', 'Piece Work History'),
+        children: <EmployeeProductionHistoryTable data={productionHistory} />,
+      };
+
+  // Piece-rate Pay Slips: one slip per settlement, each downloadable / printable / shareable.
+  const pieceSlipColumns = [
+    { title: t('common.date', 'Date'), dataIndex: 'entryDate', key: 'date', render: (d: string) => <span style={{ color: '#334155', fontWeight: 600 }}>{dayjs(d).format('DD MMM YYYY')}</span> },
+    { title: t('employees.payroll.type', 'Type'), key: 'type', render: (_: any, e: any) => <Tag style={tagStyle}>{e.type === 'ADVANCE_ADJUSTMENT' ? t('employees.payroll.settlement', 'Salary settlement') : t('employees.payroll.directPay', 'Direct Salary Payment')}</Tag> },
+    { title: t('common.amount', 'Amount'), key: 'amount', align: 'right' as const, render: (_: any, e: any) => <span style={{ fontWeight: 800, color: '#0F172A' }}>{inr(e.amount)}</span> },
+    {
+      title: t('common.actions', 'Actions'), key: 'action', align: 'right' as const,
+      render: (_: any, e: any) => {
+        const name = `payslip-${dayjs(e.entryDate).format('DD-MMM-YYYY')}.pdf`;
+        const fetch = () => employeeService.payslipBySettlement(employeeId, e.id);
+        return (
+          <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Tooltip title={t('employees.payroll.download', 'Download')}><Button size="small" type="text" icon={<DownloadOutlined />} onClick={() => runSlip(fetch, name, 'download')} /></Tooltip>
+            <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(fetch, name, 'print')} /></Tooltip>
+            <Tooltip title={t('employees.payroll.send', 'Send')}><Button size="small" type="text" icon={<MailOutlined />} onClick={() => runSlip(fetch, name, 'send')} /></Tooltip>
+          </div>
+        );
+      },
+    },
   ];
+  const pieceSlipsTab = {
+    key: 'payslips', label: t('employees.payroll.paySlips', 'Pay Slips'),
+    children: (
+      <Table size="small" rowKey="id" dataSource={settlements} columns={pieceSlipColumns}
+        scroll={{ y: SCROLL_Y, x: 'max-content' }}
+        pagination={{ pageSize: 10, size: 'small', showSizeChanger: true, pageSizeOptions: ['10', '25', '50', '100'] }} />
+    ),
+  };
+
+  const attendanceTab = { key: 'attendance', label: t('employees.attendance.title', 'Attendance'), children: <AttendanceCalendar employeeId={employeeId} focusDate={fromDate} openLeaveSignal={leaveSignal} /> };
+  const txnsTab = { key: 'txns', label: t('employees.payroll.transactionHistory', 'Transaction History'), children: transactions };
+  // Pay Slips sits just before Transaction History; piece-rate also gets its own pay-slips tab.
+  const items = isMonthly
+    ? [workTab, attendanceTab, txnsTab]
+    : [workTab, attendanceTab, pieceSlipsTab, txnsTab];
+
+  // Default to the first tab; fall back if a requested tab isn't valid for this employee type.
+  const keys = items.map((i) => i.key);
+  const requested = activeTab ?? internalTab;
+  const tab = requested && keys.includes(requested) ? requested : keys[0];
 
   return (
     <Card
+      className="payroll-card"
       style={cardStyle}
       styles={{ body: { padding: 16 } }}
-      title={<span style={{ fontWeight: 800, color: '#0F172A', fontSize: '1rem' }}>{t('employees.payroll.title', 'Payroll Account')}</span>}
-      extra={<Button icon={<PlusOutlined />} onClick={openAdvance}>{t('employees.payroll.recordAdvance', 'Record Advance')}</Button>}
     >
-      <Tabs size="small" items={items} tabBarExtraContent={{ right: tabExtra }} />
+      <Tabs className="payroll-tabs" size="small" activeKey={tab} onChange={setTab} items={items} tabBarExtraContent={{ right: tab === 'txns' ? filterExtra : undefined }} />
 
-      {/* Record Advance */}
-      <Modal open={advanceOpen} onCancel={() => setAdvanceOpen(false)} onOk={submitAdvance} confirmLoading={saving} zIndex={1300}
-        title={t('employees.payroll.recordAdvance', 'Record Advance')} okText={t('common.save', 'Save')} cancelText={t('common.cancel', 'Cancel')}>
-        <Form form={advanceForm} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item name="entryDate" label={t('common.date', 'Date')} rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} format="DD-MMM-YYYY" /></Form.Item>
-          <Form.Item name="amount" label={t('common.amount', 'Amount')} rules={[{ required: true, type: 'number', min: 0.01 }]}><InputNumber style={{ width: '100%' }} min={0} prefix="₹" /></Form.Item>
-          <Form.Item name="mode" label={t('employees.payroll.mode', 'Mode')}><Select options={PAYMENT_MODES} /></Form.Item>
-          <Form.Item name="note" label={t('employees.payroll.note', 'Note')}><Input.TextArea rows={2} maxLength={200} /></Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Mark Paid (per slip) */}
-      <Modal open={!!paySlip} onCancel={() => setPaySlip(null)} onOk={submitPay} confirmLoading={saving} zIndex={1300}
-        title={`${t('employees.payroll.markPaidFor', 'Pay')} · ${paySlip?.monthLabel ?? ''}`} okText={t('common.save', 'Save')} cancelText={t('common.cancel', 'Cancel')}>
-        <Form form={payForm} layout="vertical" style={{ marginTop: 12 }}>
-          <Form.Item name="entryDate" label={t('common.date', 'Date')} rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} format="DD-MMM-YYYY" /></Form.Item>
-          <Form.Item name="amount" label={t('common.amount', 'Amount')} rules={[{ required: true, type: 'number', min: 0.01 }]}><InputNumber style={{ width: '100%' }} min={0} prefix="₹" /></Form.Item>
-          <Form.Item name="mode" label={t('employees.payroll.mode', 'Mode')}><Select options={PAYMENT_MODES} /></Form.Item>
-          <Form.Item name="note" label={t('employees.payroll.note', 'Note')}><Input.TextArea rows={2} maxLength={200} /></Form.Item>
-        </Form>
-      </Modal>
+      {/* One settle form (date + advance toggle + amount + note) for a payable slip */}
+      <SettlePaymentModal
+        open={!!payTarget}
+        onClose={() => setPayTarget(null)}
+        employeeId={employeeId}
+        title={payTarget?.monthLabel ?? ''}
+        dueAmount={payTarget?.due ?? 0}
+        advanceBalance={payroll?.advanceBalance ?? 0}
+        period={payTarget?.period}
+        onSuccess={refetch}
+      />
     </Card>
   );
 };

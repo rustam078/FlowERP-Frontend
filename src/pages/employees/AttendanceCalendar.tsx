@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Calendar, Modal, Button, Tag, DatePicker, Select, Drawer, Empty, notification } from 'antd';
+import { Calendar, Modal, Button, Tag, DatePicker, Select, Drawer, Empty, Form, notification } from 'antd';
 import { UnorderedListOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -8,11 +8,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { employeeService } from '../../services/employee.service';
 import { useT } from '../../contexts/LanguageContext';
 
+interface AttendanceCalendarProps {
+  employeeId: string;
+  focusDate?: string;
+  openLeaveSignal?: number; // bumped by the "Record Leave" quick action to open the apply-leave modal
+}
+
 /**
  * Exception-based attendance: every day is PRESENT by default. Click a day to mark it
  * ABSENT / HALF_DAY (or clear it). Only exceptions are stored; used for monthly payroll.
  */
-const AttendanceCalendar: React.FC<{ employeeId: string; focusDate?: string }> = ({ employeeId, focusDate }) => {
+const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, focusDate, openLeaveSignal }) => {
   const t = useT();
   const qc = useQueryClient();
   const [month, setMonth] = useState(dayjs());
@@ -22,11 +28,21 @@ const AttendanceCalendar: React.FC<{ employeeId: string; focusDate?: string }> =
     if (focusDate) setMonth(dayjs(focusDate));
   }, [focusDate]);
   const [sel, setSel] = useState<dayjs.Dayjs | null>(null);
-  const [range, setRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
-  const [rangeStatus, setRangeStatus] = useState<'ABSENT' | 'HALF_DAY' | 'PRESENT'>('ABSENT');
-  const [applying, setApplying] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [listFilter, setListFilter] = useState<'ALL' | 'ABSENT' | 'HALF_DAY'>('ALL');
+  // Apply-leave modal (date range or a single day).
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveForm] = Form.useForm();
+  const [applying, setApplying] = useState(false);
+
+  // Open the leave modal whenever the "Record Leave" action fires.
+  useEffect(() => {
+    if (openLeaveSignal) {
+      leaveForm.setFieldsValue({ range: [dayjs(), dayjs()], status: 'ABSENT' });
+      setLeaveOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openLeaveSignal]);
   const from = month.startOf('month').format('YYYY-MM-DD');
   const to = month.endOf('month').format('YYYY-MM-DD');
 
@@ -93,37 +109,31 @@ const AttendanceCalendar: React.FC<{ employeeId: string; focusDate?: string }> =
     setSel(null); refetch();
   };
 
-  // Mark a whole date range at once (10th–20th). "Present" clears the range (rollback to present).
-  const applyRange = async () => {
-    if (!range || !range[0] || !range[1]) return;
+  // Apply leave over a date range (a single day = same start/end). Jumps the calendar to it.
+  const applyLeave = async () => {
+    const v = await leaveForm.validateFields();
+    const [start, end] = v.range as [dayjs.Dayjs, dayjs.Dayjs];
     setApplying(true);
     try {
-      if (rangeStatus === 'PRESENT') {
-        const days: string[] = [];
-        let d = range[0].startOf('day');
-        while (!d.isAfter(range[1], 'day')) { days.push(d.format('YYYY-MM-DD')); d = d.add(1, 'day'); }
-        await Promise.all(days.map((dt) => employeeService.clearAttendance(employeeId, dt)));
-      } else {
-        await employeeService.markAttendanceRange(employeeId, range[0].format('YYYY-MM-DD'), range[1].format('YYYY-MM-DD'), rangeStatus);
-      }
-      setRange(null);
-      if (range[0].month() !== month.month()) setMonth(range[0]);
+      await employeeService.markAttendanceRange(employeeId, start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'), v.status);
+      setLeaveOpen(false);
+      if (start.month() !== month.month() || start.year() !== month.year()) setMonth(start);
       refetch();
-      notification.success({ message: t('employees.attendance.rangeMarked', 'Range updated'), placement: 'topRight' });
+      notification.success({ message: t('employees.attendance.rangeMarked', 'Leave applied'), placement: 'topRight' });
     } finally {
       setApplying(false);
     }
   };
 
+  // Marked days show as a bold colour dot: red = absent, blue = half-day (clearly distinct).
   const cellRender = (current: dayjs.Dayjs, info: any) => {
     if (info.type !== 'date') return info.originNode;
     const st = map[current.format('YYYY-MM-DD')];
     if (!st) return null;
+    const color = st === 'ABSENT' ? '#DC2626' : '#2563EB';
     return (
-      <div style={{ textAlign: 'center' }}>
-        <Tag color={st === 'ABSENT' ? 'error' : 'warning'} style={{ margin: 0 }}>
-          {st === 'ABSENT' ? t('employees.attendance.absent', 'Absent') : t('employees.attendance.half', '½ Day')}
-        </Tag>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 1 }}>
+        <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block', boxShadow: `0 0 0 2px color-mix(in srgb, ${color} 22%, white)` }} />
       </div>
     );
   };
@@ -131,38 +141,27 @@ const AttendanceCalendar: React.FC<{ employeeId: string; focusDate?: string }> =
   const selKey = sel ? sel.format('YYYY-MM-DD') : '';
   return (
     <div>
-      {/* Mark a whole range at once */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-        <RangePicker value={range as any} onChange={(v) => setRange(v as any)} format="DD-MMM" allowClear style={{ flex: '1 1 220px' }} />
-        <Select value={rangeStatus} onChange={(v) => setRangeStatus(v)} style={{ width: 150 }}
-          options={[
-            { value: 'ABSENT', label: t('employees.attendance.absent', 'Absent') },
-            { value: 'HALF_DAY', label: t('employees.attendance.half', '½ Day') },
-            { value: 'PRESENT', label: t('employees.attendance.present', 'Present (clear)') },
-          ]}
-        />
-        <Button type="primary" loading={applying} disabled={!range || !range[0] || !range[1]} onClick={applyRange}>
-          {t('employees.attendance.applyRange', 'Apply')}
-        </Button>
-        <Button icon={<UnorderedListOutlined />} style={{ marginLeft: 'auto' }} onClick={() => setListOpen(true)}>
+      {/* One row, right-aligned: Marked days first, then the month picker (follows the global filter). */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
+        <Button icon={<UnorderedListOutlined />} onClick={() => setListOpen(true)}>
           {t('employees.attendance.marked', 'Marked days')} ({markedList.length})
         </Button>
+        <DatePicker
+          picker="month" value={month} format="MMMM YYYY" allowClear={false}
+          onChange={(d) => { if (d) setMonth(d); }}
+        />
       </div>
-      <Calendar
-        fullscreen={false}
-        value={month}
-        onPanelChange={(v) => setMonth(v)}
-        onSelect={(d, info: any) => { if (!info || info.source === 'date') setSel(d); }}
-        cellRender={cellRender}
-        headerRender={({ value, onChange }) => (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 10 }}>
-            <DatePicker
-              picker="month" value={value} format="MMMM YYYY" allowClear={false}
-              onChange={(d) => { if (d) { onChange(d); setMonth(d); } }}
-            />
-          </div>
-        )}
-      />
+      {/* Lighter, cleaner calendar inside a soft bordered panel */}
+      <div className="attendance-calendar" style={{ border: '1px solid #E2E8F0', borderRadius: 10, padding: '4px 10px 10px', background: '#fff' }}>
+        <Calendar
+          fullscreen={false}
+          value={month}
+          onPanelChange={(v) => setMonth(v)}
+          onSelect={(d, info: any) => { if (!info || info.source === 'date') setSel(d); }}
+          cellRender={cellRender}
+          headerRender={() => null}
+        />
+      </div>
       {/* Marked days drawer — grouped into ranges, filterable, clearable */}
       <Drawer open={listOpen} onClose={() => setListOpen(false)} placement="right" width={380} zIndex={1300}
         title={t('employees.attendance.marked', 'Marked days')}
@@ -188,7 +187,7 @@ const AttendanceCalendar: React.FC<{ employeeId: string; focusDate?: string }> =
                 {future && <Tag color="blue" style={{ marginLeft: 6 }}>{t('employees.attendance.upcoming', 'Upcoming')}</Tag>}
               </span>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Tag color={r.status === 'ABSENT' ? 'error' : 'warning'} style={{ margin: 0 }}>
+                <Tag color={r.status === 'ABSENT' ? 'error' : 'blue'} style={{ margin: 0 }}>
                   {r.status === 'ABSENT' ? t('employees.attendance.absent', 'Absent') : t('employees.attendance.half', '½ Day')}
                 </Tag>
                 <Button size="small" type="text" danger onClick={() => clearRange(r.fromDate, r.toDate)}>×</Button>
@@ -204,6 +203,22 @@ const AttendanceCalendar: React.FC<{ employeeId: string; focusDate?: string }> =
           <Button onClick={() => mark('HALF_DAY')}>{t('employees.attendance.markHalf', 'Mark Half-day')}</Button>
           {map[selKey] && <Button type="dashed" onClick={clear}>{t('employees.attendance.clear', 'Clear (Present)')}</Button>}
         </div>
+      </Modal>
+
+      {/* Apply leave for a date range or a single day (from "Record Leave") */}
+      <Modal open={leaveOpen} onCancel={() => setLeaveOpen(false)} onOk={applyLeave} confirmLoading={applying} zIndex={1300}
+        title={t('employees.attendance.applyLeave', 'Apply Leave')} okText={t('employees.attendance.applyRange', 'Apply')} cancelText={t('common.cancel', 'Cancel')}>
+        <Form form={leaveForm} layout="vertical" style={{ marginTop: 12 }}>
+          <Form.Item name="range" label={t('employees.attendance.leaveDates', 'From – To (same day for one day)')} rules={[{ required: true, message: t('employees.attendance.pickDates', 'Select date(s)') }]}>
+            <RangePicker format="DD-MMM-YYYY" allowClear style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="status" label={t('employees.attendance.leaveType', 'Leave Type')} rules={[{ required: true }]}>
+            <Select options={[
+              { value: 'ABSENT', label: t('employees.attendance.absent', 'Absent') },
+              { value: 'HALF_DAY', label: t('employees.attendance.half', '½ Day') },
+            ]} />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );

@@ -17,6 +17,8 @@ import { useT } from '../../contexts/LanguageContext';
 
 interface EmployeeInfoCardProps {
   employee: IEmployee;
+  extra?: React.ReactNode;    // filter controls, shown top-right
+  footer?: React.ReactNode;   // summary cards, shown inside the card
 }
 
 const formatCurrency = (value: number) =>
@@ -32,7 +34,7 @@ const Detail: React.FC<{ icon: React.ReactNode; label: string; value: React.Reac
   </div>
 );
 
-export const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({ employee }) => {
+export const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({ employee, extra, footer }) => {
   const t = useT();
   const [showSalary, setShowSalary] = useState(false);
   const getInitials = (name: string) =>
@@ -99,13 +101,15 @@ export const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({ employee }) 
             )}
           </div>
         </div>
+        {/* Filter controls, pushed to the right */}
+        {extra && <div style={{ marginLeft: 'auto' }}>{extra}</div>}
       </div>
 
       <Divider style={{ margin: '10px 0' }} />
 
-      {/* Details in 3 columns: contact | contact+date | type+salary */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px 16px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+      {/* Details in 3 columns packed to the left (not stretched) */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 48px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 150 }}>
           <Detail
             icon={<MailOutlined />}
             label={t('employees.form.email', 'Email')}
@@ -115,7 +119,7 @@ export const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({ employee }) 
           />
           <Detail icon={<HomeOutlined />} label={t('employees.form.address', 'Address')} value={employee.address || notProvided} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 150 }}>
           <Detail icon={<PhoneOutlined />} label={t('employees.info.phone', 'Phone Number')} value={employee.mobileNumber || notProvided} />
           <Detail
             icon={<CalendarOutlined />}
@@ -123,11 +127,18 @@ export const EmployeeInfoCard: React.FC<EmployeeInfoCardProps> = ({ employee }) 
             value={employee.joiningDate ? dayjs(employee.joiningDate).format('DD-MMM-YYYY') : '-'}
           />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 150 }}>
           <Detail icon={<IdcardOutlined />} label={t('employees.info.employeeType', 'Employee Type')} value={typeNode} />
           <Detail icon={<WalletOutlined />} label={t('employees.info.salary', 'Salary')} value={salaryNode} />
         </div>
       </div>
+
+      {footer && (
+        <>
+          <Divider style={{ margin: '12px 0' }} />
+          {footer}
+        </>
+      )}
     </Card>
   );
 };

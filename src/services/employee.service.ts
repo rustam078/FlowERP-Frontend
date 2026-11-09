@@ -72,9 +72,18 @@ export const employeeService = {
     const response = await axiosInstance.get(`/employees/${id}/payroll`, { params });
     return response.data;
   },
-  recordLedger: async (id: string, entry: { entryDate: string; type: 'ADVANCE' | 'PAYOUT'; amount: number; mode?: string; note?: string; period?: string }) => {
+  recordLedger: async (id: string, entry: { entryDate: string; type: 'ADVANCE' | 'PAYOUT' | 'ADVANCE_ADJUSTMENT'; amount: number; mode?: string; note?: string; period?: string }) => {
     const response = await axiosInstance.post(`/employees/${id}/ledger`, entry);
     return response.data;
+  },
+  // Pay-slip PDF (blob): by month for monthly staff, or by settlement entry for piece-rate staff.
+  payslipByMonth: async (id: string, period: string) => {
+    const res = await axiosInstance.get(`/employees/${id}/payslip`, { params: { period }, responseType: 'blob' });
+    return new Blob([res.data], { type: 'application/pdf' });
+  },
+  payslipBySettlement: async (id: string, ledgerId: string) => {
+    const res = await axiosInstance.get(`/employees/${id}/payslip`, { params: { ledgerId }, responseType: 'blob' });
+    return new Blob([res.data], { type: 'application/pdf' });
   },
   deleteLedger: async (id: string, entryId: string) => {
     const response = await axiosInstance.delete(`/employees/${id}/ledger/${entryId}`);

@@ -21,6 +21,7 @@ import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import HeadingInfo from '../../components/common/HeadingInfo';
 import QrLabelSettings from '../../modules/qr/components/QrLabelSettings';
 import ThresholdSettings from './ThresholdSettings';
+import PayrollSettings from './PayrollSettings';
 import CompanyInvoiceSettings from './CompanyInvoiceSettings';
 import MenuOrderSettings from './MenuOrderSettings';
 import ChartSettings from './ChartSettings';
@@ -88,6 +89,14 @@ const BASE_SECTIONS = [
     keywords: 'low stock threshold inventory alert reorder minimum level bell',
     icon: <TuneRoundedIcon color="primary" />,
     render: () => <ThresholdSettings />,
+  },
+  {
+    id: 'payroll-auto-settle',
+    title: 'Payroll Auto-Settle',
+    subtitle: 'Auto-settle completed-month dues from advance',
+    keywords: 'payroll salary piece advance auto settle adjust month due employee wage automatic',
+    icon: <TuneRoundedIcon color="primary" />,
+    render: () => <PayrollSettings />,
   },
 ];
 

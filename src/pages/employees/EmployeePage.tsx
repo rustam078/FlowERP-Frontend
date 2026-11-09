@@ -223,9 +223,7 @@ const EmployeePage: React.FC = () => {
       key: 'email',
       width: 200,
       render: (email?: string) => email ? (
-        <a href={`mailto:${email}`} style={{ color: 'var(--theme-primary)', fontWeight: 500 }} onClick={(e) => e.stopPropagation()}>
-          {email}
-        </a>
+        <span style={{ color: 'var(--theme-primary)', fontWeight: 500 }}>{email}</span>
       ) : (
         <span style={{ color: '#94A3B8', fontStyle: 'italic', fontSize: '0.85rem' }}>{t('employees.notProvided', 'Not Provided')}</span>
       ),

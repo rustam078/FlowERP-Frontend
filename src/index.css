@@ -155,3 +155,31 @@ body,
   outline: none !important;
 }
 
+
+/* Payroll card: fixed height (matches the Salary Overview panel via row stretch),
+   so switching tabs never changes the card height; overflowing tab content scrolls. */
+.payroll-card { display: flex; flex-direction: column; min-height: 420px; }
+.payroll-card > .ant-card-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.payroll-card .payroll-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.payroll-card .payroll-tabs > .ant-tabs-content-holder { flex: 1; min-height: 0; overflow: auto; }
+.payroll-card .payroll-tabs > .ant-tabs-content-holder > .ant-tabs-content { height: 100%; }
+
+/* Attendance calendar: lighter, cleaner look with soft row lines. */
+.attendance-calendar .ant-picker-calendar { background: transparent; }
+.attendance-calendar .ant-picker-calendar-mini .ant-picker-panel { border-top: none; }
+.attendance-calendar .ant-picker-content th {
+  color: #94A3B8; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; padding-bottom: 6px;
+}
+.attendance-calendar .ant-picker-content td { border-bottom: 1px solid #F1F5F9; }
+.attendance-calendar .ant-picker-cell .ant-picker-cell-inner { border-radius: 8px; transition: background 0.15s ease; }
+.attendance-calendar .ant-picker-cell-in-view:hover .ant-picker-cell-inner {
+  background: color-mix(in srgb, var(--theme-primary) 8%, white);
+}
+.attendance-calendar .ant-picker-cell-selected .ant-picker-cell-inner,
+.attendance-calendar .ant-picker-cell-selected:hover .ant-picker-cell-inner {
+  background: color-mix(in srgb, var(--theme-primary) 14%, white) !important;
+  color: var(--theme-primary) !important; font-weight: 700;
+}
+.attendance-calendar .ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: var(--theme-primary) !important; border-radius: 8px;
+}
