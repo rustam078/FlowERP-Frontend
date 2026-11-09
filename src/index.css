@@ -183,3 +183,67 @@ body,
 .attendance-calendar .ant-picker-cell-today .ant-picker-cell-inner::before {
   border-color: var(--theme-primary) !important; border-radius: 8px;
 }
+
+/* ── Centralized input styling (all modules): bottom-border only, no spinners ──
+   Textareas keep their box; buttons are untouched; focus shows only a bottom line. */
+:where(.ant-input-outlined):not(textarea),
+:where(.ant-input-affix-wrapper-outlined),
+:where(.ant-input-number-outlined),
+:where(.ant-picker-outlined),
+:where(.ant-select-outlined) .ant-select-selector {
+  border-width: 0 0 1px 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+:where(.ant-input-outlined):not(textarea):hover,
+:where(.ant-input-outlined):not(textarea):focus,
+:where(.ant-input-affix-wrapper-outlined):hover,
+:where(.ant-input-affix-wrapper-outlined):focus-within,
+:where(.ant-input-number-outlined):hover,
+:where(.ant-input-number-outlined):focus-within,
+:where(.ant-picker-outlined):hover,
+:where(.ant-picker-outlined):focus-within,
+:where(.ant-select-outlined:hover) .ant-select-selector,
+:where(.ant-select-outlined.ant-select-focused) .ant-select-selector {
+  border-bottom-color: var(--theme-primary) !important;
+  box-shadow: none !important;
+}
+/* Hide number input spinners (+/-) */
+.ant-input-number-handler-wrap { display: none !important; }
+
+/* Currency addon (addonBefore/After) — strip the box entirely; keep a single bottom line,
+   so the appended ₹ symbol no longer draws left/top/right borders. */
+.ant-input-number-group-wrapper,
+.ant-input-number-wrapper,
+.ant-input-group-wrapper,
+.ant-input-wrapper {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.ant-input-number-group-addon,
+.ant-input-group-addon,
+.ant-input-number-group-wrapper .ant-input-number,
+.ant-input-number-wrapper .ant-input-number,
+.ant-input-group-wrapper .ant-input,
+.ant-input-wrapper .ant-input {
+  border: none !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.ant-input-number-group-addon,
+.ant-input-group-addon { padding-left: 0 !important; }
+.ant-input-number-group-wrapper:focus-within .ant-input-number-group-addon,
+.ant-input-number-group-wrapper:focus-within .ant-input-number,
+.ant-input-number-wrapper:focus-within .ant-input-number,
+.ant-input-group-wrapper:focus-within .ant-input-group-addon,
+.ant-input-group-wrapper:focus-within .ant-input {
+  border-bottom-color: var(--theme-primary) !important;
+}
+/* Hide number spinner arrows even on hover / focus / active */
+.ant-input-number-handler-wrap,
+.ant-input-number-handler { display: none !important; }
+.ant-input-number:hover .ant-input-number-handler-wrap,
+.ant-input-number-focused .ant-input-number-handler-wrap { display: none !important; }

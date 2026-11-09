@@ -47,6 +47,7 @@ import {
   RiseOutlined,
   FallOutlined,
   MoreOutlined,
+  LeftOutlined,
   IdcardOutlined,
   ClockCircleOutlined,
   ShoppingCartOutlined,
@@ -67,6 +68,7 @@ import { getProductIcon } from '../../utils/product-icons';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useT } from '../../contexts/LanguageContext';
 import GenerateLabelsDialog from '../../modules/qr/components/GenerateLabelsDialog';
+import BatchHistorySection from '../../components/products/BatchHistorySection';
 
 /* ─────────────────────────────────────────
    Mini Sparkline (CSS only, no library)
@@ -173,6 +175,9 @@ const ProductDetailsPage = () => {
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [deletingPieceCodeId, setDeletingPieceCodeId] = useState(null);
   const [togglingPieceCodeId, setTogglingPieceCodeId] = useState(null);
+  const [pricingPage, setPricingPage] = useState(0); // Pricing History: 2 rows per page
+
+  const PRICING_PAGE_SIZE = 2;
 
   // Product image controls (upload/replace/remove) shown in the hero header.
   const [imgVersion, setImgVersion] = useState(() => Date.now());
@@ -249,11 +254,12 @@ const ProductDetailsPage = () => {
     refetchOnMount: 'always',
   });
 
-  // Stock receipts (batches: purchase + production) for the "View All" drawer.
+  // Stock receipts (batches: purchase + production) — powers the always-visible
+  // Batch History section and the "View All" drawer, so it loads on page visit.
   const { data: batchesResponse, isLoading: batchesLoading } = useQuery({
     queryKey: ['productBatchReceipts', productId],
     queryFn: () => productService.getProductBatches(productId, { page: 0, size: 500 }),
-    enabled: !!productId && productionDrawerVisible,
+    enabled: !!productId,
     staleTime: 0,
     refetchOnMount: 'always',
   });
@@ -870,6 +876,22 @@ const ProductDetailsPage = () => {
   const productIcon = getProductIcon(product.iconName, product.name);
   const isPurchasedProduct = product.source === 'PURCHASED';
 
+  // Avg. Sale Price shown in the product info row:
+  // purchased → stock value ÷ qty (/pc); manufactured → latest active selling price.
+  const sym = getCurrencySymbol();
+  const latestSalePrice = currentMaterialCost && (currentMaterialCost.salePrice || currentMaterialCost.salePrice === 0)
+    ? Number(currentMaterialCost.salePrice) : null;
+  const avgSalePrice = isPurchasedProduct
+    ? (Number(stockSummary?.totalQty || 0) > 0
+      ? `${sym}${Math.round(Number(stockSummary?.stockValue || 0) / Number(stockSummary?.totalQty || 1)).toLocaleString('en-IN')}${t('products.kpi.perPc', '/pc')}`
+      : null)
+    : (latestSalePrice != null ? `${sym}${latestSalePrice.toLocaleString('en-IN')}` : null);
+
+  // Pricing History paging — 2 rows at a time, clamped so a deletion never strands us.
+  const pricingTotalPages = Math.max(1, Math.ceil(materialCosts.length / PRICING_PAGE_SIZE));
+  const pricingSafePage = Math.min(pricingPage, pricingTotalPages - 1);
+  const pagedMaterialCosts = materialCosts.slice(pricingSafePage * PRICING_PAGE_SIZE, pricingSafePage * PRICING_PAGE_SIZE + PRICING_PAGE_SIZE);
+
   const sourceIcon =
     product.source === 'PURCHASED'
       ? <ShoppingCartOutlined style={{ color: '#94A3B8', fontSize: '0.85rem' }} />
@@ -1056,6 +1078,16 @@ const ProductDetailsPage = () => {
                     </div>
                   </div>
 
+                  {avgSalePrice && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <RiseOutlined style={{ color: '#94A3B8', fontSize: '0.85rem' }} />
+                      <div>
+                        <div style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('products.kpi.avgSalePrice', 'Avg. Sale Price')}</div>
+                        <div style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>{avgSalePrice}</div>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                     <CalendarOutlined style={{ color: '#94A3B8', fontSize: '0.85rem' }} />
                     <div>
@@ -1084,8 +1116,8 @@ const ProductDetailsPage = () => {
         {/* ── 3 KPI Metric Cards (all in one row) ── */}
         <Row gutter={[16, 16]}>
           {/* Card 1: Total Qty = purchase + production (with breakdown) */}
-          <Col xs={24} sm={8}>
-            <Card style={cardStyle} bodyStyle={{ padding: '20px 24px' }}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card style={{ ...cardStyle, height: 176 }} bodyStyle={{ padding: '14px 16px', height: '100%', overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginBottom: 8 }}>{t('products.kpi.totalQty', 'Total Qty')}</div>
@@ -1100,19 +1132,16 @@ const ProductDetailsPage = () => {
                     <span><span style={{ color: '#94A3B8' }}>{t('products.kpi.production', 'Production')} </span><b style={{ color: '#0F172A' }}>{Number(stockSummary?.manufacturedQty || 0).toLocaleString('en-IN')}</b></span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ShoppingOutlined style={{ color: 'var(--theme-primary)', fontSize: '1.1rem' }} />
-                  </div>
-                  <Button type="link" size="small" onClick={handleOpenProductionDrawer} style={{ color: 'var(--theme-primary)', fontWeight: 700, padding: 0 }}>{t('products.viewAll', 'View All')}</Button>
+                <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShoppingOutlined style={{ color: 'var(--theme-primary)', fontSize: '1.1rem' }} />
                 </div>
               </div>
             </Card>
           </Col>
 
           {/* Card 2: Total Cost = Σ(qty × unit cost), purchase + production */}
-          <Col xs={24} sm={8}>
-            <Card style={cardStyle} bodyStyle={{ padding: '20px 24px' }}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card style={{ ...cardStyle, height: 176 }} bodyStyle={{ padding: '14px 16px', height: '100%', overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginBottom: 8 }}>{t('products.kpi.totalCost', 'Total Cost')}</div>
@@ -1134,96 +1163,7 @@ const ProductDetailsPage = () => {
             </Card>
           </Col>
 
-          {/* Card 3: Stock Value = Σ(qty × selling price) */}
-          <Col xs={24} sm={8}>
-            <Card style={cardStyle} bodyStyle={{ padding: '20px 24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600, marginBottom: 8 }}>{t('products.kpi.stockValue', 'Stock Value')}</div>
-                  {stockSummaryLoading ? <Skeleton.Input active size="small" style={{ width: 100 }} /> : (
-                    <div style={{ fontSize: '1.9rem', fontWeight: 900, color: 'var(--theme-primary)', lineHeight: 1 }}>
-                      {getCurrencySymbol()}{Number(stockSummary?.stockValue || 0).toLocaleString('en-IN')}
-                    </div>
-                  )}
-                  <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: 4 }}>{t('products.kpi.atSellingPrice', 'At selling price')}</div>
-                  {isPurchasedProduct && Number(stockSummary?.totalQty || 0) > 0 ? (
-                    <div style={{ fontSize: '0.72rem', color: '#64748B', marginTop: 8 }}>
-                      {t('products.kpi.avgSalePrice', 'Avg sale price')} <b style={{ color: '#0F172A' }}>{getCurrencySymbol()}{Math.round(Number(stockSummary?.stockValue || 0) / Number(stockSummary?.totalQty || 1)).toLocaleString('en-IN')}</b>{t('products.kpi.perPc', '/pc')}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: 8 }}>{t('products.kpi.qtyXSale', 'Qty × sale price')}</div>
-                  )}
-                </div>
-                <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <RiseOutlined style={{ color: 'var(--theme-primary)', fontSize: '1.1rem' }} />
-                </div>
-              </div>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* ── Main 2-Column Layout ── */}
-        <Row gutter={[20, 20]} align="stretch">
-          {/* Left Column: Piece Code Table */}
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <Space>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <BarcodeOutlined style={{ fontSize: '0.85rem', color: 'var(--theme-primary)' }} />
-                  </div>
-                  <span style={{ fontWeight: 800, color: '#0F172A', fontSize: '1rem' }}>{t('products.pcMgmt.title', 'Piece Code Management')}</span>
-                  <Tooltip title={isPurchasedProduct
-                    ? t('products.pcMgmt.tooltipPurchased', "Bought products don't use piece codes. Only made products do.")
-                    : t('products.pcMgmt.tooltipMade', "A rate can't be changed later. To use a new rate, add a new piece code. Old records stay the same.")}>
-                    <InfoCircleOutlined style={{ color: 'var(--theme-primary)', fontSize: '0.8rem', cursor: 'help' }} />
-                  </Tooltip>
-                </Space>
-              }
-              extra={
-                can('products', 'write') ? (
-                <Space>
-                  <Tooltip title={isPurchasedProduct ? t('products.pcMgmt.addTooltipPurchased', 'Piece codes do not apply to purchased products') : t('products.pcMgmt.addTooltipMade', 'Add a new piece code')}>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      onClick={handleOpenDrawer}
-                      disabled={isPurchasedProduct}
-                      style={{ borderRadius: 6, fontWeight: 600, height: 34, paddingInline: 18, marginRight: 2 }}
-                    >
-                      {t('products.addPieceCode', 'Add Piece Code')}
-                    </Button>
-                  </Tooltip>
-                </Space>
-                ) : null
-              }
-              style={{ ...cardStyle, height: '100%' }}
-              headStyle={{ padding: '14px 14px' }}
-              bodyStyle={{ padding: 0 }}
-            >
-              <Table
-                className="custom-table"
-                rowKey="id"
-                loading={pieceCodesLoading}
-                dataSource={pieceCodes.map((pc) => ({ ...pc, key: pc.id }))}
-                columns={columns}
-                scroll={{ y: 150 }}
-                pagination={{
-                  defaultPageSize: 5,
-                  showSizeChanger: true,
-                  pageSizeOptions: ['5', '10', '25', '50'],
-                  showTotal: (total, range) =>
-                    `${t('products.page.showing', 'Showing')} ${range[0]} ${t('products.page.to', 'to')} ${range[1]} ${t('products.page.of', 'of')} ${total} ${t('products.page.entries', 'entries')}`,
-                  style: {
-                    margin: '12px 20px',
-                  },
-                }}
-                size="small"
-              />
-            </Card>
-          </Col>
-
-          {/* Right Column: Pricing History (cost + sale price + profit) */}
+          {/* Card 3: Pricing History (expands to the remaining width) */}
           <Col xs={24} lg={12}>
             <Card
               title={
@@ -1241,100 +1181,56 @@ const ProductDetailsPage = () => {
                 </Space>
               }
               extra={
-                can('products', 'write') ? (
-                <Space>
-                  <Tooltip title={product.source === 'PURCHASED' ? t('products.pricing.addTooltipPurchased', 'Pricing applies to manufactured products. Enable manufacturing to add pricing.') : ''}>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      disabled={product.source === 'PURCHASED'}
-                      onClick={() => setMaterialCostModalOpen(true)}
-                      style={{ borderRadius: 6, fontWeight: 600, height: 34, paddingInline: 18, marginRight: 2 }}
-                    >
-                      {t('products.pricing.add', 'Add Pricing')}
-                    </Button>
-                  </Tooltip>
+                <Space size={4}>
+                  {materialCosts.length > PRICING_PAGE_SIZE && (
+                    <>
+                      <Button type="text" size="small" icon={<LeftOutlined />} disabled={pricingSafePage === 0} onClick={() => setPricingPage(pricingSafePage - 1)} style={{ width: 26, height: 26 }} />
+                      <span style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600, minWidth: 30, textAlign: 'center' }}>{pricingSafePage + 1}/{pricingTotalPages}</span>
+                      <Button type="text" size="small" icon={<RightOutlined />} disabled={pricingSafePage >= pricingTotalPages - 1} onClick={() => setPricingPage(pricingSafePage + 1)} style={{ width: 26, height: 26 }} />
+                    </>
+                  )}
+                  {can('products', 'write') ? (
+                    <Tooltip title={product.source === 'PURCHASED' ? t('products.pricing.addTooltipPurchased', 'Pricing applies to manufactured products. Enable manufacturing to add pricing.') : ''}>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        disabled={product.source === 'PURCHASED'}
+                        onClick={() => setMaterialCostModalOpen(true)}
+                        style={{ borderRadius: 6, fontWeight: 600, height: 34, paddingInline: 18, marginRight: 2 }}
+                      >
+                        {t('products.pricing.add', 'Add Pricing')}
+                      </Button>
+                    </Tooltip>
+                  ) : null}
                 </Space>
-                ) : null
               }
-              style={{ ...cardStyle, height: '100%' }}
-              headStyle={{ padding: '14px 14px' }}
-              bodyStyle={{ padding: 0 }}
+              style={{ ...cardStyle, height: 176 }}
+              headStyle={{ padding: '10px 12px' }}
+              bodyStyle={{ padding: 0, overflow: 'hidden' }}
             >
               <Table
                 className="custom-table"
                 rowKey="id"
                 loading={materialCostLoading}
-                dataSource={materialCosts}
+                dataSource={pagedMaterialCosts}
                 columns={materialcolumns}
-                scroll={{ x: 'max-content', y: 150 }}
+                scroll={{ x: 'max-content' }}
                 locale={{ emptyText: t('products.pricing.empty', 'No pricing set yet. Add cost & sale price so production and New Sale use them.') }}
-                pagination={{
-                  defaultPageSize: 5,
-                  showSizeChanger: true,
-                  pageSizeOptions: ['5', '10', '25', '50'],
-                  showTotal: (total, range) =>
-                    `${t('products.page.showing', 'Showing')} ${range[0]} ${t('products.page.to', 'to')} ${range[1]} ${t('products.page.of', 'of')} ${total} ${t('products.page.entries', 'entries')}`,
-                  style: {
-                    margin: '12px 20px',
-                  },
-                }}
+                pagination={false}
                 size="small"
               />
             </Card>
           </Col>
         </Row>
 
-        {/* ── Latest Activity (Full Width) ── */}
-        <Card
-          title={
-            <Space>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', backgroundColor: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ClockCircleOutlined style={{ fontSize: '0.85rem', color: '#EA580C' }} />
-              </div>
-              <span style={{ fontWeight: 800, color: '#0F172A', fontSize: '1rem' }}>{t('products.activity.title', 'Latest Activity')}</span>
-            </Space>
-          }
-          extra={
-            hasMoreActivities ? (
-              <span
-                onClick={() => setShowAllActivities(!showAllActivities)}
-                style={{
-                  fontSize: '0.82rem',
-                  color: 'var(--theme-primary)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  transition: 'color 0.2s',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#1D4ED8'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--theme-primary)'}
-              >
-                {showAllActivities ? t('products.showLess', 'Show Less') : t('products.viewAll', 'View All')}
-                <RightOutlined style={{ fontSize: '0.7rem', transform: showAllActivities ? 'rotate(90deg)' : 'none', transition: 'transform 0.3s' }} />
-              </span>
-            ) : null
-          }
-          style={cardStyle}
-          bodyStyle={{ padding: '20px 24px' }}
-        >
-          {allActivities.length > 0 ? (
-            <>
-              {/* Wrapping grid – cards never shrink below 220px, so text can't overlap. */}
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 16,
-              }}>
-                {visibleActivities.map((act) => renderActivityCard(act))}
-              </div>
-            </>
-          ) : (
-            <Empty description={t('products.activity.empty', 'No activity yet')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-          )}
-        </Card>
+        {/* ── Batch History (same layout/icons as the Inventory module) ── */}
+        <BatchHistorySection
+          batches={batchesResponse?.batches || []}
+          productName={product.name}
+          canWrite={can('inventory', 'write')}
+          onAdjust={openAdjust}
+          onQr={setQrBatch}
+        />
 
         {/* ── Add Piece Code Drawer ── */}
         <Drawer

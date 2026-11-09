@@ -6,6 +6,11 @@ import { downloadReport, periodToken } from '../utils/reportDownload';
  * Service to handle Production API endpoints.
  */
 export const productionService = {
+  /** Distinct past work names for the Work field's type-to-suggest list. */
+  getWorkNames: async (): Promise<string[]> => {
+    const response = await axiosInstance.get('/production/work-names');
+    return response.data?.data ?? [];
+  },
   /**
    * Fetch ALL production entries (untruncated) as an array.
    * GET /api/production?employeeId=xxx&fromDate=xxx&toDate=xxx&productId=xxx&pieceCodeId=xxx

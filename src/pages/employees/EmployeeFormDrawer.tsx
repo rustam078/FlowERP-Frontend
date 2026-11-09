@@ -182,7 +182,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     rules={[{ required: true, message: t('employees.form.salaryRequired', 'Monthly salary is required.') }]}
                     style={{ flex: 1, marginBottom: 0 }}
                   >
-                    <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                    <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
                   </Form.Item>
                 )}
                 {isEdit ? (
@@ -190,7 +190,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.advanceCurrent', 'Advance (current)')}</span>}
                     style={{ flex: 1, marginBottom: 0 }}
                   >
-                    <InputNumber value={employee?.advanceBalance ?? 0} disabled size="large" addonBefore={getCurrencySymbol()} style={{ width: '100%' }} />
+                    <InputNumber value={employee?.advanceBalance ?? 0} disabled controls={false} size="large" addonBefore={getCurrencySymbol()} style={{ width: '100%' }} />
                   </Form.Item>
                 ) : (
                   <Form.Item
@@ -198,7 +198,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.openingAdvance', 'Opening Advance')} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{t('products.optional', '(optional)')}</span></span>}
                     style={{ flex: 1, marginBottom: 0 }}
                   >
-                    <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                    <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
                   </Form.Item>
                 )}
               </div>

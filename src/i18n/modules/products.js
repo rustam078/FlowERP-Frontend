@@ -35,8 +35,8 @@ export default {
     'products.produce.save': 'Produce',
     'products.produce.searchProduct': 'Search product',
     'products.produce.noProducts': 'No products',
-    'products.produce.cost': 'Cost',
-    'products.produce.selling': 'Selling',
+    'products.produce.cost': 'Actual Cost',
+    'products.produce.selling': 'MRP',
     'products.produce.base': 'Base',
     'products.produce.confirmTitle': 'Confirm Produce',
     'products.produce.confirmSave': 'Confirm & Produce',
@@ -233,6 +233,7 @@ export default {
 
     // ── Details: stock receipts drawer ──
     'products.receipts.title': 'Stock Receipts',
+    'products.batchHistory.title': 'Batch History',
     'products.receipts.tabActive': 'Active',
     'products.receipts.tabSold': 'Sold',
     'products.receipts.segPurchase': 'Purchase',
@@ -338,8 +339,8 @@ export default {
     'products.produce.save': 'प्रोड्यूस करें',
     'products.produce.searchProduct': 'प्रोडक्ट खोजें',
     'products.produce.noProducts': 'कोई प्रोडक्ट नहीं',
-    'products.produce.cost': 'लागत',
-    'products.produce.selling': 'विक्रय',
+    'products.produce.cost': 'वास्तविक लागत',
+    'products.produce.selling': 'एमआरपी',
     'products.produce.base': 'बेस',
     'products.produce.confirmTitle': 'प्रोडक्शन की पुष्टि करें',
     'products.produce.confirmSave': 'पुष्टि करें और प्रोड्यूस करें',
@@ -536,6 +537,7 @@ export default {
 
     // ── Details: stock receipts drawer ──
     'products.receipts.title': 'स्टॉक रसीदें',
+    'products.batchHistory.title': 'बैच इतिहास',
     'products.receipts.tabActive': 'सक्रिय',
     'products.receipts.tabSold': 'बिका',
     'products.receipts.segPurchase': 'खरीद',

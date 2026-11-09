@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Drawer, Button, DatePicker, Select, Input, InputNumber, Checkbox, Empty, notification } from 'antd';
+import { Drawer, Button, DatePicker, Select, Input, InputNumber, Checkbox, Empty, notification, Modal } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { employeeService } from '../../services/employee.service';
@@ -43,7 +43,17 @@ const BulkAdvanceDrawer: React.FC<Props> = ({ open, onClose, employees, onSucces
 
   const reset = () => { setAmounts({}); setNote(''); setSearch(''); setDate(dayjs()); setMode('CASH'); };
 
-  const submit = async () => {
+  const doSave = async (items: { employeeId: string; amount: number }[]) => {
+    setSaving(true);
+    try {
+      await employeeService.bulkAdvance({ entryDate: date.format('YYYY-MM-DD'), mode, note, items });
+      notification.success({ message: `${items.length} ${t('employees.expense.done', 'expenses recorded')}`, placement: 'topRight' });
+      reset(); onSuccess(); onClose();
+    } finally { setSaving(false); }
+  };
+
+  // Confirm the full list of expenses before saving.
+  const submit = () => {
     const items = Object.entries(amounts)
       .filter(([, amt]) => amt && amt > 0)
       .map(([employeeId, amount]) => ({ employeeId, amount: amount as number }));
@@ -51,12 +61,23 @@ const BulkAdvanceDrawer: React.FC<Props> = ({ open, onClose, employees, onSucces
       notification.warning({ message: t('employees.bulkAdv.pickOne', 'Enter an amount for at least one employee'), placement: 'topRight' });
       return;
     }
-    setSaving(true);
-    try {
-      await employeeService.bulkAdvance({ entryDate: date.format('YYYY-MM-DD'), mode, note, items });
-      notification.success({ message: `${items.length} ${t('employees.expense.done', 'expenses recorded')}`, placement: 'topRight' });
-      reset(); onSuccess(); onClose();
-    } finally { setSaving(false); }
+    const nameOf = (id: string) => employees.find((e) => e.id === id)?.fullName || id;
+    Modal.confirm({
+      title: t('employees.expense.confirmTitle', 'Confirm expenses'),
+      zIndex: 1400,
+      okText: t('employees.expense.give', 'Add Expense'),
+      cancelText: t('common.cancel', 'Cancel'),
+      content: (
+        <div style={{ marginTop: 8 }}>
+          {items.map((it) => (
+            <div key={it.employeeId} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #F1F5F9' }}>
+              <span style={{ color: '#334155' }}>{nameOf(it.employeeId)}</span><b>{inr(it.amount)}</b>
+            </div>
+          ))}
+        </div>
+      ),
+      onOk: () => doSave(items),
+    });
   };
 
   return (
@@ -78,7 +99,6 @@ const BulkAdvanceDrawer: React.FC<Props> = ({ open, onClose, employees, onSucces
         <DatePicker value={date} onChange={(d) => d && setDate(d)} format="DD-MMM-YYYY" allowClear={false} style={{ flex: 1 }} />
         <Select value={mode} onChange={setMode} options={PAYMENT_MODES} style={{ width: 120 }} />
       </div>
-      <Input placeholder={t('employees.payroll.note', 'Note')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} style={{ marginBottom: 12 }} />
       <Input placeholder={t('employees.searchPlaceholder', 'Search by name or code')} prefix={<SearchOutlined style={{ color: '#94A3B8' }} />} value={search} onChange={(e) => setSearch(e.target.value)} allowClear style={{ marginBottom: 12 }} />
 
       {/* Employee rows */}

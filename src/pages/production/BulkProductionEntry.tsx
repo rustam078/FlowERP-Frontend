@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ConfigProvider, Card, Collapse, InputNumber, Button, DatePicker,
-  Drawer, Checkbox, Input, Tag, Avatar, Empty, notification, Breadcrumb, Tooltip, Modal,
+  Drawer, Checkbox, Input, Tag, Avatar, Empty, notification, Breadcrumb, Tooltip, Modal, AutoComplete,
 } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, SaveOutlined, UserAddOutlined, TeamOutlined,
@@ -73,6 +73,9 @@ const BulkProductionEntry: React.FC = () => {
   }, [employees, productionDate]);
 
   const { data: employeesData } = useQuery({ queryKey: ['employees'], queryFn: employeeService.getEmployees });
+  // Past work names for the Work field's type-to-suggest list.
+  const { data: workNames } = useQuery({ queryKey: ['productionWorkNames'], queryFn: productionService.getWorkNames });
+  const workOptions = (workNames || []).map((w: string) => ({ value: w }));
   // Only PIECE_RATE employees do piece-work entries (monthly staff are paid via salary).
   const allEmployees = (employeesData?.data || []).filter((e: any) => e.active && e.paymentType === 'PIECE_RATE');
 
@@ -91,7 +94,14 @@ const BulkProductionEntry: React.FC = () => {
   const updateRow = (empKey: number, rowKey: number, patch: Partial<ProdRow>) =>
     updateEmp(empKey, (e) => ({ ...e, products: e.products.map((r) => (r.key === rowKey ? { ...r, ...patch } : r)) }));
 
-  const openAddDrawer = () => { setSelectedIds([]); setEmpSearch(''); setAddOpen(true); };
+  const openAddDrawer = () => {
+    // No piece-rate employees at all → guide the user instead of opening an empty drawer.
+    if (allEmployees.length === 0) {
+      notification.info({ message: t('production.bulk.noPieceEmployees', 'No Piece Rate employees found. Please add one from the Employee module.'), placement: 'topRight' });
+      return;
+    }
+    setSelectedIds([]); setEmpSearch(''); setAddOpen(true);
+  };
 
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -149,7 +159,7 @@ const BulkProductionEntry: React.FC = () => {
       catch { failed.push(emp); }
     }
     setSaving(false);
-    ['productionRecent', 'productionStats', 'employeeDetails', 'employeeCalendar', 'productionHistory', 'production']
+    ['productionRecent', 'productionStats', 'employeeDetails', 'employeeCalendar', 'productionHistory', 'production', 'productionWorkNames', 'payroll']
       .forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
 
     if (failed.length === 0) {
@@ -177,13 +187,19 @@ const BulkProductionEntry: React.FC = () => {
     return (
       <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px 110px 110px 40px', gap: 8, alignItems: 'center', padding: '6px 0', borderTop: idx === 0 ? 'none' : '1px solid #F1F5F9' }}>
         <span style={{ color: '#94A3B8', fontWeight: 700, fontSize: '0.8rem' }}>{idx + 1}</span>
-        <Input
-          placeholder={t('production.bulk.workPlaceholder', 'Work (e.g. Cutting)')}
+        <AutoComplete
           value={row.work}
-          onChange={(e) => updateRow(emp.key, row.key, { work: e.target.value })}
-          variant="borderless" className={`bpe-field${invalid && !row.work ? ' bpe-bad' : ''}`}
+          options={workOptions}
+          onChange={(v) => updateRow(emp.key, row.key, { work: v })}
+          // Suggest only after the user types (no full list on focus); match anywhere in the name.
+          filterOption={(input, option) => !!input && String(option?.value ?? '').toLowerCase().includes(input.toLowerCase())}
           style={{ width: '100%' }}
-        />
+        >
+          <Input
+            placeholder={t('production.bulk.workPlaceholder', 'Work (e.g. Cutting)')}
+            variant="borderless" className={`bpe-field${invalid && !row.work ? ' bpe-bad' : ''}`}
+          />
+        </AutoComplete>
         <InputNumber
           min={1} controls={false} placeholder={t('production.qty', 'Qty')} value={row.quantity}
           onChange={(v) => updateRow(emp.key, row.key, { quantity: v as number })}

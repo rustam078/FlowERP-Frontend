@@ -58,6 +58,11 @@ export const vendorService = {
 // ─────────────────────────────────────────
 
 export const investmentService = {
+  /** Distinct past material names for the Item Name type-to-suggest list. */
+  getMaterialNames: async () => {
+    const response = await axiosInstance.get('/investments/material-names');
+    return response.data?.data ?? [];
+  },
   /**
    * Fetch all investments (with optional filters).
    * GET /api/investments

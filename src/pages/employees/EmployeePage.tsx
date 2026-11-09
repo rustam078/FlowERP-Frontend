@@ -175,10 +175,9 @@ const EmployeePage: React.FC = () => {
   const handleDeactivate = (employee: IEmployee) => {
     Modal.confirm({
       title: t('employees.deactivate.title', 'Deactivate Employee'),
-      icon: <ExclamationCircleOutlined style={{ color: '#EF4444' }} />,
+      icon: <ExclamationCircleOutlined style={{ color: 'var(--theme-primary)' }} />,
       content: `${t('employees.deactivate.confirmBefore', 'Are you sure you want to deactivate')} ${employee.fullName} (${employee.employeeCode})${t('employees.deactivate.confirmAfter', '?')}`,
       okText: t('employees.deactivate.ok', 'Yes, Deactivate'),
-      okType: 'danger',
       cancelText: t('common.cancel', 'Cancel'),
       onOk: async () => {
         await deactivateMutation.mutateAsync(employee.id);

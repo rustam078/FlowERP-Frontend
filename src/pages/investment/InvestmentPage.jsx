@@ -205,7 +205,7 @@ const SummaryCard = ({ title, value, icon, iconBg, valueColor = '#0F172A', loadi
 // ─────────────────────────────────────────
 const makeEmptyRow = (id) => ({
   id,
-  itemType: 'PRODUCT',
+  itemType: 'MATERIAL',
   itemName: '',
   productId: undefined,
   quantity: undefined,
@@ -349,6 +349,13 @@ const InvestmentPage = () => {
     queryKey: ['products'],
     queryFn: productService.getProducts,
   });
+
+  // Past material names for the Item Name type-to-suggest list (Material rows).
+  const { data: materialNamesData } = useQuery({
+    queryKey: ['materialNames'],
+    queryFn: investmentService.getMaterialNames,
+  });
+  const materialNames = materialNamesData || [];
 
   // Backend returns these already sorted: latest purchaseDate first, then latest createdAt.
   const investments = investmentsData?.data || [];
@@ -569,6 +576,13 @@ const InvestmentPage = () => {
         duration: 4,
       });
       queryClient.invalidateQueries({ queryKey: ['investments'] });
+      // A create-time payment can clear OTHER invoices' dues (cross-invoice allocation),
+      // so refresh every cached invoice detail too — keeps the view drawer in sync with
+      // the table without needing a page refresh.
+      queryClient.invalidateQueries({ queryKey: ['investment'] });
+      // New products/materials must appear in suggestions immediately (no manual refresh).
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['materialNames'] });
       // Refresh the affected vendor's detail (purchase history/totals) whether the
       // vendor came from the URL param or was picked in the form, plus the vendor list.
       const affectedVendorId = variables?.vendorId || queryVendorId;
@@ -1315,11 +1329,14 @@ const InvestmentPage = () => {
       title: t('investment.itemCol.itemName', 'Item Name'),
       width: 150,
       render: (_, record) => {
-        // Suggest matching product names ONLY for PRODUCT rows, and only while typing.
+        // Suggest while typing: existing products for PRODUCT rows, existing materials for MATERIAL rows.
         const q = (record.itemName || '').trim().toLowerCase();
-        const opts = (record.itemType === 'PRODUCT' && q)
-          ? products.filter((p) => { const n = (p.name || '').toLowerCase(); return n.includes(q) && n !== q; }).map((p) => ({ value: p.name }))
-          : [];
+        let opts = [];
+        if (q && record.itemType === 'PRODUCT') {
+          opts = products.filter((p) => { const n = (p.name || '').toLowerCase(); return n.includes(q) && n !== q; }).map((p) => ({ value: p.name }));
+        } else if (q && record.itemType === 'MATERIAL') {
+          opts = materialNames.filter((n) => { const ln = (n || '').toLowerCase(); return ln.includes(q) && ln !== q; }).map((n) => ({ value: n }));
+        }
         return (
           <AutoComplete
             className="inv-item-auto"

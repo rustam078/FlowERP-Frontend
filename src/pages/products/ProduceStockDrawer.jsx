@@ -91,15 +91,15 @@ const ProduceStockDrawer = ({ open, onClose, products = [], onDone }) => {
         </div>
       }
     >
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', marginBottom: 4 }}>{t('production.productionDate', 'Production Date')}</div>
-        <DatePicker value={date} onChange={(d) => d && setDate(d)} format="DD-MMM-YYYY" allowClear={false} style={{ width: 200 }} />
+      {/* Production Date + Search in one row; search takes the remaining space */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+        <DatePicker value={date} onChange={(d) => d && setDate(d)} format="DD-MMM-YYYY" allowClear={false} style={{ width: 160, flex: '0 0 auto' }} />
+        <Input
+          allowClear prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+          placeholder={t('products.produce.searchProduct', 'Search product')}
+          value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }}
+        />
       </div>
-      <Input
-        allowClear prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
-        placeholder={t('products.produce.searchProduct', 'Search product')}
-        value={search} onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: 12 }}
-      />
       {filtered.length === 0 ? (
         <Empty description={t('products.produce.noProducts', 'No products')} />
       ) : (
@@ -109,27 +109,27 @@ const ProduceStockDrawer = ({ open, onClose, products = [], onDone }) => {
             const checked = !!row;
             const invalid = checked && triedSave && !isValid(row);
             return (
-              <div key={p.id} style={{ borderBottom: '1px solid #F1F5F9', padding: '8px 4px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <div key={p.id} style={{ borderBottom: '1px solid #F1F5F9', padding: '8px 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', minWidth: 0, flex: checked ? '0 1 auto' : 1 }}>
                   <Checkbox checked={checked} onChange={() => toggle(p)} />
-                  <Avatar size={28} style={{ background: 'var(--theme-primary)' }}>{(p.name || '?')[0]?.toUpperCase()}</Avatar>
+                  <Avatar size={28} style={{ background: 'var(--theme-primary)', flexShrink: 0 }}>{(p.name || '?')[0]?.toUpperCase()}</Avatar>
                   <ProductLabel productId={p.id} iconName={p.iconName} name={p.name} hasImage={p.hasImage} size={18} />
                 </label>
                 {checked && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8, paddingLeft: 34 }}>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
                     <InputNumber
-                      min={1} placeholder={t('production.qty', 'Qty')} value={row.quantity}
+                      min={1} controls={false} placeholder={t('production.qty', 'Qty')} value={row.quantity}
                       onChange={(v) => setField(p.id, 'quantity', v)}
-                      style={{ width: '100%', borderColor: invalid ? '#F87171' : undefined, boxShadow: invalid ? '0 0 0 2px rgba(248,113,113,0.2)' : undefined }}
+                      style={{ width: 72, borderColor: invalid ? '#F87171' : undefined, boxShadow: invalid ? '0 0 0 2px rgba(248,113,113,0.2)' : undefined }}
                     />
                     <InputNumber
-                      min={0} addonBefore={getCurrencySymbol()} placeholder={t('products.produce.cost', 'Cost')} value={row.cost}
-                      onChange={(v) => setField(p.id, 'cost', v)} style={{ width: '100%' }}
+                      min={0} controls={false} prefix={getCurrencySymbol()} placeholder={t('products.produce.cost', 'Actual Cost')} value={row.cost}
+                      onChange={(v) => setField(p.id, 'cost', v)} style={{ width: 108 }}
                     />
                     <InputNumber
-                      min={0} addonBefore={getCurrencySymbol()}
-                      placeholder={p.sellingPrice != null ? String(p.sellingPrice) : t('products.produce.selling', 'Selling')}
-                      value={row.selling} onChange={(v) => setField(p.id, 'selling', v)} style={{ width: '100%' }}
+                      min={0} controls={false} prefix={getCurrencySymbol()}
+                      placeholder={p.sellingPrice != null ? String(p.sellingPrice) : t('products.produce.selling', 'MRP')}
+                      value={row.selling} onChange={(v) => setField(p.id, 'selling', v)} style={{ width: 108 }}
                     />
                   </div>
                 )}

@@ -132,7 +132,7 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
   // Transaction filter inside a popover (type + date range), applied on Apply.
   const filterContent = (
     <div style={{ width: 250, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <Select value={tmpFilter} onChange={setTmpFilter} style={{ width: '100%' }}
+      <Select value={tmpFilter} onChange={setTmpFilter} style={{ width: '100%' }} getPopupContainer={(tr) => tr.parentElement as HTMLElement}
         options={[
           { value: 'ALL', label: t('common.all', 'All') },
           { value: 'ADVANCE', label: t('employees.payroll.advance', 'Advance') },

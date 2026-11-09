@@ -114,6 +114,7 @@ const MaterialCostModal = ({
                     <InputNumber
                         style={{ width: '100%' }}
                         min={0}
+                        controls={false}
                         precision={2}
                         addonBefore={getCurrencySymbol()}
                         placeholder={t('products.material.costPlaceholder', 'e.g. 120 (making / purchase cost)')}
@@ -134,6 +135,7 @@ const MaterialCostModal = ({
                     <InputNumber
                         style={{ width: '100%' }}
                         min={0}
+                        controls={false}
                         precision={2}
                         addonBefore={getCurrencySymbol()}
                         placeholder={t('products.material.salePlaceholder', 'e.g. 150 (selling price)')}

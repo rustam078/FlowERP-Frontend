@@ -40,12 +40,12 @@ const MINI_DRAWER_WIDTH = 68;
 // `group: true` marks the collapsible Sales section. Order below is the default.
 const MENU_ITEMS = [
   { key: 'dashboard', text: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
-  { key: 'production', text: 'Production', path: '/production', icon: <ProductionIcon /> },
-  { key: 'inventory', text: 'Inventory', path: '/inventory', icon: <InventoryIcon /> },
-  { key: 'products', text: 'Products', path: '/products', icon: <ProductsIcon /> },
   { key: 'investment', text: 'Investment', path: '/investment', icon: <InvestmentIcon /> },
   { key: 'employees', text: 'Employees', path: '/employees', icon: <EmployeesIcon /> },
+  { key: 'production', text: 'Production', path: '/production', icon: <ProductionIcon /> },
+  { key: 'products', text: 'Products', path: '/products', icon: <ProductsIcon /> },
   { key: 'sales', text: 'Sales', path: '/sales/list', icon: <SalesIcon /> },
+  { key: 'inventory', text: 'Inventory', path: '/inventory', icon: <InventoryIcon /> },
   { key: 'settings', text: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];
 

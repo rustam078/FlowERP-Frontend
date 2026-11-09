@@ -568,12 +568,6 @@ const ProductsPage = () => {
 
               const dropdownMenu = {
                 items: [
-                  ...(product.source === 'PURCHASED' ? [{
-                    key: 'enable-manufacturing',
-                    label: t('products.enableManufacturing', 'Enable Manufacturing'),
-                    icon: <BuildOutlined style={{ color: 'var(--theme-primary)' }} />,
-                    onClick: () => openEnableManufacturing(product),
-                  }] : []),
                   {
                     key: 'toggle-status',
                     label: product.active ? t('products.deactivateProduct', 'Deactivate Product') : t('products.activateProduct', 'Activate Product'),
@@ -830,14 +824,14 @@ const ProductsPage = () => {
                   style={{ flex: 1 }}
                   label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.costPrice', 'Cost Price')}</span>}
                 >
-                  <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                  <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
                 </Form.Item>
                 <Form.Item
                   name="sellingPrice"
                   style={{ flex: 1 }}
                   label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.sellingPrice', 'Selling Price')}</span>}
                 >
-                  <InputNumber min={0} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                  <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
                 </Form.Item>
               </div>
 

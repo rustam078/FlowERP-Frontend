@@ -175,10 +175,9 @@ const ProductionPage: React.FC = () => {
   const handleDeleteRow = (record: IProductionEntry) => {
     Modal.confirm({
       title: t('production.deleteTitle', 'Delete Production Entry'),
-      icon: <ExclamationCircleOutlined style={{ color: '#EF4444' }} />,
+      icon: <ExclamationCircleOutlined style={{ color: 'var(--theme-primary)' }} />,
       content: t('production.deleteContent', 'This action cannot be undone.'),
       okText: t('common.delete', 'Delete'),
-      okType: 'danger',
       cancelText: t('common.cancel', 'Cancel'),
       onOk: async () => {
         await deleteMutation.mutateAsync(record.id);
@@ -474,7 +473,7 @@ const ProductionPage: React.FC = () => {
                       style={{ marginBottom: 12 }}
                     >
                       <Select placeholder={t('production.employee', 'Employee')} allowClear showSearch optionFilterProp="children">
-                        {employees.map((emp: any) => (
+                        {employees.filter((emp: any) => emp.paymentType === 'PIECE_RATE' && emp.active).map((emp: any) => (
                           <Select.Option key={emp.id} value={emp.id}>
                             {emp.fullName}
                           </Select.Option>
@@ -549,7 +548,7 @@ const ProductionPage: React.FC = () => {
         </Row>
 
         {/* ── Production Table ── */}
-        <Card style={cardStyle} bodyStyle={{ padding: '0px 16px' }}>
+        <Card style={cardStyle} bodyStyle={{ padding: 0 }}>
           <Table
             dataSource={entries}
             columns={historyColumns}
