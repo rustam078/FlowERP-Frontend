@@ -1,6 +1,6 @@
 import axiosInstance from './axios';
 import { IProductionEntry, IProductionFilter, IProductionPage } from '../types/production';
-import { downloadReport, periodToken } from '../utils/reportDownload';
+import { downloadReport, printReport, shareReport, periodToken } from '../utils/reportDownload';
 
 /**
  * Service to handle Production API endpoints.
@@ -129,6 +129,27 @@ export const productionService = {
   downloadProductionReport: async (format: 'pdf' | 'excel', fromDate: string, toDate: string) => {
     await downloadReport(`/production/report/${format}`, { fromDate, toDate },
       `production_${periodToken(fromDate, toDate)}.${format === 'excel' ? 'xlsx' : 'pdf'}`);
+  },
+
+  /** Print the date-range work report PDF straight to the printer. */
+  printProductionReport: async (fromDate: string, toDate: string) => {
+    await printReport('/production/report/pdf', { fromDate, toDate });
+  },
+
+  /** Share the date-range work report PDF (device share sheet → WhatsApp / email). */
+  shareProductionReport: async (fromDate: string, toDate: string) => {
+    await shareReport('/production/report/pdf', { fromDate, toDate },
+      `production_${periodToken(fromDate, toDate)}.pdf`);
+  },
+
+  /** Print a single entry's work report PDF. GET /api/production/{id}/pdf */
+  printProductionEntryPdf: async (id: string) => {
+    await printReport(`/production/${id}/pdf`);
+  },
+
+  /** Share a single entry's work report PDF (device share sheet → WhatsApp / email). */
+  shareProductionEntryPdf: async (id: string) => {
+    await shareReport(`/production/${id}/pdf`, undefined, `production-report-${id}.pdf`);
   },
 
   downloadProductionExcel: async (id: string) => {

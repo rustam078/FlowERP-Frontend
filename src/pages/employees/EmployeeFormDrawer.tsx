@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { Drawer, Form, Input, InputNumber, DatePicker, Select, Button, Space } from 'antd';
+import { Drawer, Form, Input, DatePicker, Select, Button, Space } from 'antd';
 import { UserOutlined, PlusOutlined, EditOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { IEmployee } from '../../types/employee.types';
-import { getCurrencySymbol } from '../../utils/currency';
+import CurrencyInput from '../../components/common/CurrencyInput';
 import { useT } from '../../contexts/LanguageContext';
 
 interface EmployeeFormDrawerProps {
@@ -43,7 +43,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
         form.setFieldsValue({
           joiningDate: dayjs(), // default joining date to today
           active: true,
-          paymentType: 'PIECE_RATE',
+          paymentType: 'MONTHLY', // Monthly is the default payment type
         });
       }
     }
@@ -57,6 +57,12 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       mobileNumber: values.mobileNumber?.trim() || '',
       address: values.address?.trim() || '',
     };
+
+    // Piece-rate employees have no monthly salary — the field stays visible but
+    // disabled, so clear any lingering value before saving.
+    if (values.paymentType !== 'MONTHLY') {
+      formattedValues.monthlySalary = null;
+    }
 
     if (values.joiningDate) {
       formattedValues.joiningDate = values.joiningDate.format('YYYY-MM-DD');
@@ -175,22 +181,22 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
             const monthly = form.getFieldValue('paymentType') === 'MONTHLY';
             return (
               <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-                {monthly && (
-                  <Form.Item
-                    name="monthlySalary"
-                    label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.monthlySalary', 'Monthly Salary')}</span>}
-                    rules={[{ required: true, message: t('employees.form.salaryRequired', 'Monthly salary is required.') }]}
-                    style={{ flex: 1, marginBottom: 0 }}
-                  >
-                    <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
-                  </Form.Item>
-                )}
+                {/* Monthly Salary stays visible for every payment type; it's only
+                    disabled for Piece Rate, keeping the layout consistent. */}
+                <Form.Item
+                  name="monthlySalary"
+                  label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.monthlySalary', 'Monthly Salary')}</span>}
+                  rules={monthly ? [{ required: true, message: t('employees.form.salaryRequired', 'Monthly salary is required.') }] : []}
+                  style={{ flex: 1, marginBottom: 0 }}
+                >
+                  <CurrencyInput disabled={!monthly} size="large" placeholder="0" />
+                </Form.Item>
                 {isEdit ? (
                   <Form.Item
                     label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.advanceCurrent', 'Advance (current)')}</span>}
                     style={{ flex: 1, marginBottom: 0 }}
                   >
-                    <InputNumber value={employee?.advanceBalance ?? 0} disabled controls={false} size="large" addonBefore={getCurrencySymbol()} style={{ width: '100%' }} />
+                    <CurrencyInput value={employee?.advanceBalance ?? 0} disabled size="large" />
                   </Form.Item>
                 ) : (
                   <Form.Item
@@ -198,7 +204,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     label={<span style={{ fontWeight: 600, color: '#475569' }}>{t('employees.form.openingAdvance', 'Opening Advance')} <span style={{ fontWeight: 400, color: '#94A3B8' }}>{t('products.optional', '(optional)')}</span></span>}
                     style={{ flex: 1, marginBottom: 0 }}
                   >
-                    <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                    <CurrencyInput size="large" placeholder="0" />
                   </Form.Item>
                 )}
               </div>

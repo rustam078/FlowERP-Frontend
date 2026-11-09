@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import HeadingInfo from '../../components/common/HeadingInfo';
+import CurrencyInput from '../../components/common/CurrencyInput';
 import { getCurrencySymbol } from '../../utils/currency';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,7 +24,6 @@ import {
   Modal,
   Tabs,
   Upload,
-  InputNumber,
 } from 'antd';
 import {
   ShoppingOutlined,
@@ -360,7 +360,7 @@ const ProductsPage = () => {
           </div>
         ),
         okText: t('products.archive.ok', 'Archive Product'),
-        okType: 'danger',
+        okButtonProps: { style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } },
         cancelText: t('common.cancel', 'Cancel'),
         onOk() {
           toggleStatusMutation.mutate({ id: record.id, active: false });
@@ -824,14 +824,14 @@ const ProductsPage = () => {
                   style={{ flex: 1 }}
                   label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.costPrice', 'Cost Price')}</span>}
                 >
-                  <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                  <CurrencyInput size="large" placeholder="0" />
                 </Form.Item>
                 <Form.Item
                   name="sellingPrice"
                   style={{ flex: 1 }}
                   label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.sellingPrice', 'Selling Price')}</span>}
                 >
-                  <InputNumber min={0} controls={false} size="large" addonBefore={getCurrencySymbol()} placeholder="0" style={{ width: '100%' }} />
+                  <CurrencyInput size="large" placeholder="0" />
                 </Form.Item>
               </div>
 
@@ -927,12 +927,12 @@ const ProductsPage = () => {
               <Form.Item name="cost" style={{ flex: 1 }}
                 label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.costPrice', 'Cost Price *')}</span>}
                 rules={[{ required: true, message: t('products.rule.costRequired', 'Cost price is mandatory.') }]}>
-                <InputNumber min={0} prefix={getCurrencySymbol()} placeholder="0" controls={false} style={{ width: '100%', borderRadius: 8 }} />
+                <CurrencyInput placeholder="0" />
               </Form.Item>
               <Form.Item name="sellingPrice" style={{ flex: 1 }}
                 label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.sellingPrice', 'Selling Price *')}</span>}
                 rules={[{ required: true, message: t('products.rule.sellingRequired', 'Selling price is mandatory.') }]}>
-                <InputNumber min={0} prefix={getCurrencySymbol()} placeholder="0" controls={false} style={{ width: '100%', borderRadius: 8 }} />
+                <CurrencyInput placeholder="0" />
               </Form.Item>
             </div>
 
@@ -954,7 +954,7 @@ const ProductsPage = () => {
                       </Form.Item>
                       <Form.Item {...restField} name={[name, 'rate']} style={{ flex: 1, marginBottom: 0 }}
                         rules={[{ required: true, message: t('products.rule.rateRequired', 'Rate required') }]}>
-                        <InputNumber min={0.01} placeholder="0" prefix={getCurrencySymbol()} controls={false} style={{ width: '100%', borderRadius: 8 }} />
+                        <CurrencyInput min={0.01} placeholder="0" />
                       </Form.Item>
                       <div style={{ width: 32, display: 'flex', justifyContent: 'center', paddingTop: 4 }}>
                         {fields.length > 1 && (

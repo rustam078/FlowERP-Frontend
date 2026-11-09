@@ -227,6 +227,7 @@ const SalesList = () => {
         onClose={() => setReportOpen(false)}
         onDownload={(format, from, to) => salesService.downloadSalesReport(format, from, to)}
         onPrint={(from, to) => salesService.printSalesReport(from, to)}
+        onSend={(from, to) => salesService.shareSalesReport(from, to)}
       />
 
       <SalesTable

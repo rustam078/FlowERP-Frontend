@@ -1,5 +1,5 @@
 import axiosInstance from '../../../services/axios';
-import { downloadReport, printReport, periodToken } from '../../../utils/reportDownload';
+import { downloadReport, printReport, shareReport, periodToken } from '../../../utils/reportDownload';
 import { printPdfFromUrl } from '../../../utils/printPdf';
 
 const salesService = {
@@ -102,6 +102,12 @@ const salesService = {
   /** Print the date-range sales report PDF directly. */
   printSalesReport: async (fromDate, toDate) => {
     await printReport('/sales/report/pdf', { fromDate, toDate });
+  },
+
+  /** Share the date-range sales report PDF (device share sheet → WhatsApp / email). */
+  shareSalesReport: async (fromDate, toDate) => {
+    await shareReport('/sales/report/pdf', { fromDate, toDate },
+      `sales_${periodToken(fromDate, toDate)}.pdf`);
   },
 };
 

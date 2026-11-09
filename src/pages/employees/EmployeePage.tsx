@@ -179,6 +179,7 @@ const EmployeePage: React.FC = () => {
       content: `${t('employees.deactivate.confirmBefore', 'Are you sure you want to deactivate')} ${employee.fullName} (${employee.employeeCode})${t('employees.deactivate.confirmAfter', '?')}`,
       okText: t('employees.deactivate.ok', 'Yes, Deactivate'),
       cancelText: t('common.cancel', 'Cancel'),
+      okButtonProps: { style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } },
       onOk: async () => {
         await deactivateMutation.mutateAsync(employee.id);
       },

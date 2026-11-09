@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Radio, DatePicker, Button, Space, Typography } from 'antd';
-import { FilePdfOutlined, FileExcelOutlined, PrinterOutlined } from '@ant-design/icons';
+import { FilePdfOutlined, FileExcelOutlined, PrinterOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useT } from '../../contexts/LanguageContext';
 
@@ -15,16 +15,17 @@ interface Props {
   onClose: () => void;
   onDownload: (format: Format, fromDate: string, toDate: string) => Promise<void> | void;
   onPrint?: (fromDate: string, toDate: string) => Promise<void> | void; // adds a Print button when provided
+  onSend?: (fromDate: string, toDate: string) => Promise<void> | void; // adds a Send button (device share → WhatsApp/email)
 }
 
 /** Report range picker (current month / particular month / custom ≤90 days) + PDF/Excel buttons. */
-const ReportDownloadDialog: React.FC<Props> = ({ open, title, onClose, onDownload, onPrint }) => {
+const ReportDownloadDialog: React.FC<Props> = ({ open, title, onClose, onDownload, onPrint, onSend }) => {
   const t = useT();
   const heading = title ?? t('ui.report.title', 'Download report');
   const [mode, setMode] = useState<'current' | 'month' | 'range'>('current');
   const [month, setMonth] = useState<Dayjs>(dayjs());
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
-  const [busy, setBusy] = useState<Format | 'print' | null>(null);
+  const [busy, setBusy] = useState<Format | 'print' | 'send' | null>(null);
   const [error, setError] = useState('');
 
   const resolveRange = (): { from: string; to: string } | null => {
@@ -71,6 +72,21 @@ const ReportDownloadDialog: React.FC<Props> = ({ open, title, onClose, onDownloa
     }
   };
 
+  const handleSend = async () => {
+    setError('');
+    const r = resolveRange();
+    if (!r || !onSend) return;
+    setBusy('send');
+    try {
+      await onSend(r.from, r.to);
+      onClose();
+    } catch (e: any) {
+      setError(e.message || t('ui.report.sendFailed', 'Send failed'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <Modal open={open} onCancel={onClose} title={heading} footer={null} destroyOnClose>
       <Radio.Group
@@ -109,7 +125,12 @@ const ReportDownloadDialog: React.FC<Props> = ({ open, title, onClose, onDownloa
       <Space style={{ marginTop: 18, width: '100%', justifyContent: 'flex-end' }}>
         {onPrint && (
           <Button icon={<PrinterOutlined />} loading={busy === 'print'} onClick={handlePrint}>
-            Print
+            {t('ui.report.print', 'Print')}
+          </Button>
+        )}
+        {onSend && (
+          <Button icon={<MailOutlined />} loading={busy === 'send'} onClick={handleSend}>
+            {t('ui.report.send', 'Send')}
           </Button>
         )}
         <Button icon={<FilePdfOutlined style={{ color: '#DC2626' }} />} loading={busy === 'pdf'} onClick={() => handle('pdf')}>

@@ -74,3 +74,27 @@ export async function printReport(path, params) {
   const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
   printPdfFromUrl(url);
 }
+
+// Fetch a PDF report and open the device share sheet (WhatsApp / email / …).
+// Falls back to a plain download when the browser can't share files — same as the pay-slip Send.
+export async function shareReport(path, params, fallbackName) {
+  let response;
+  try {
+    response = await axiosInstance.get(path, { params, responseType: 'blob', timeout: REPORT_TIMEOUT_MS });
+  } catch (err) {
+    throw await toReadableError(err);
+  }
+  const name = filenameFromHeaders(response.headers, fallbackName);
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const file = new File([blob], name, { type: 'application/pdf' });
+  const nav = navigator;
+  if (nav.canShare && nav.canShare({ files: [file] })) {
+    try { await nav.share({ files: [file], title: name }); return; } catch { /* user cancelled the share */ }
+  }
+  const url = URL.createObjectURL(blob); // fallback: download so it can be attached to WhatsApp / email
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}

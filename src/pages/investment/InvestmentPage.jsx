@@ -2400,26 +2400,28 @@ const InvestmentPage = () => {
                         )}
                       </span>}
                     >
-                      <InputNumber
-                        min={0}
-                        max={discountMode === 'PERCENT' ? 100 : undefined}
-                        precision={2}
-                        controls={false}
-                        value={discountMode === 'PERCENT' ? discountPct : discount}
-                        onChange={(v) => (discountMode === 'PERCENT' ? setDiscountPct(v ?? 0) : setDiscount(v || 0))}
-                        className="skr-discount-input"
-                        addonBefore={
-                          <Segmented
-                            size="small"
-                            value={discountMode}
-                            onChange={setDiscountMode}
-                            options={[{ label: '%', value: 'PERCENT' }, { label: getCurrencySymbol(), value: 'AMOUNT' }]}
-                          />
-                        }
-                        style={{ width: '100%' }}
-                        size="middle"
-                        placeholder={discountMode === 'PERCENT' ? '0' : '0.00'}
-                      />
+                      {/* Mode toggle (% or ₹) sits beside the field, so either can be
+                          freely selected; the input stays bottom-border-only. */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Segmented
+                          value={discountMode}
+                          onChange={setDiscountMode}
+                          options={[{ label: '%', value: 'PERCENT' }, { label: getCurrencySymbol(), value: 'AMOUNT' }]}
+                        />
+                        <InputNumber
+                          min={0}
+                          max={discountMode === 'PERCENT' ? 100 : undefined}
+                          precision={2}
+                          controls={false}
+                          value={discountMode === 'PERCENT' ? discountPct : discount}
+                          onChange={(v) => (discountMode === 'PERCENT' ? setDiscountPct(v ?? 0) : setDiscount(v || 0))}
+                          className="skr-discount-input"
+                          prefix={discountMode === 'AMOUNT' ? <span style={{ color: '#64748B', fontWeight: 600, marginRight: 2 }}>{getCurrencySymbol()}</span> : null}
+                          style={{ flex: 1 }}
+                          size="middle"
+                          placeholder={discountMode === 'PERCENT' ? '0' : '0.00'}
+                        />
+                      </div>
                     </Form.Item>
                   </Col>
                 </>

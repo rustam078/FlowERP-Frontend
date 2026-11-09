@@ -41,6 +41,8 @@ import {
   FileExcelOutlined,
   MoreOutlined,
   DownloadOutlined,
+  PrinterOutlined,
+  MailOutlined,
 } from '@ant-design/icons';
 import { Box, Typography } from '@mui/material';
 import dayjs from 'dayjs';
@@ -87,6 +89,20 @@ const ProductionPage: React.FC = () => {
       await productionService.downloadProductionExcel(record.id);
     } catch (e: any) {
       notification.error({ message: t('production.excelDownloadFailed', 'Excel download failed'), description: e.message, placement: 'topRight' });
+    }
+  };
+  const handlePrintPdf = async (record: IProductionEntry) => {
+    try {
+      await productionService.printProductionEntryPdf(record.id);
+    } catch (e: any) {
+      notification.error({ message: t('production.printFailed', 'Print failed'), description: e.message, placement: 'topRight' });
+    }
+  };
+  const handleSendPdf = async (record: IProductionEntry) => {
+    try {
+      await productionService.shareProductionEntryPdf(record.id);
+    } catch (e: any) {
+      notification.error({ message: t('production.sendFailed', 'Send failed'), description: e.message, placement: 'topRight' });
     }
   };
 
@@ -179,6 +195,7 @@ const ProductionPage: React.FC = () => {
       content: t('production.deleteContent', 'This action cannot be undone.'),
       okText: t('common.delete', 'Delete'),
       cancelText: t('common.cancel', 'Cancel'),
+      okButtonProps: { style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } },
       onOk: async () => {
         await deleteMutation.mutateAsync(record.id);
       },
@@ -378,6 +395,8 @@ const ProductionPage: React.FC = () => {
             items: [
               { key: 'pdf', icon: <FilePdfOutlined style={{ color: '#DC2626' }} />, label: t('production.downloadPdf', 'Download PDF'), onClick: () => handleDownloadPdf(record) },
               { key: 'excel', icon: <FileExcelOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('production.downloadExcel', 'Download Excel'), onClick: () => handleDownloadExcel(record) },
+              { key: 'print', icon: <PrinterOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('production.print', 'Print'), onClick: () => handlePrintPdf(record) },
+              { key: 'send', icon: <MailOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('production.send', 'Send'), onClick: () => handleSendPdf(record) },
               ...(can('production', 'delete') ? [
                 { type: 'divider' as const },
                 { key: 'delete', icon: <DeleteOutlined />, label: t('common.delete', 'Delete'), danger: true, onClick: () => handleDeleteRow(record) },
@@ -584,6 +603,8 @@ const ProductionPage: React.FC = () => {
           title={t('production.downloadReportTitle', 'Download production report')}
           onClose={() => setReportOpen(false)}
           onDownload={(format, from, to) => productionService.downloadProductionReport(format, from, to)}
+          onPrint={(from, to) => productionService.printProductionReport(from, to)}
+          onSend={(from, to) => productionService.shareProductionReport(from, to)}
         />
 
         {/* ── View Items Modal (all products in a production entry) ── */}

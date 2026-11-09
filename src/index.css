@@ -189,6 +189,7 @@ body,
 :where(.ant-input-outlined):not(textarea),
 :where(.ant-input-affix-wrapper-outlined),
 :where(.ant-input-number-outlined),
+:where(.ant-input-number-affix-wrapper-outlined),
 :where(.ant-picker-outlined),
 :where(.ant-select-outlined) .ant-select-selector {
   border-width: 0 0 1px 0 !important;
@@ -201,12 +202,28 @@ body,
 :where(.ant-input-affix-wrapper-outlined):focus-within,
 :where(.ant-input-number-outlined):hover,
 :where(.ant-input-number-outlined):focus-within,
+:where(.ant-input-number-affix-wrapper-outlined):hover,
+:where(.ant-input-number-affix-wrapper-outlined):focus-within,
 :where(.ant-picker-outlined):hover,
 :where(.ant-picker-outlined):focus-within,
 :where(.ant-select-outlined:hover) .ant-select-selector,
 :where(.ant-select-outlined.ant-select-focused) .ant-select-selector {
   border-bottom-color: var(--theme-primary) !important;
   box-shadow: none !important;
+}
+/* Inline-prefix currency input: the bottom line lives on the affix wrapper, so the
+   inner number field stays borderless (no double line). */
+.ant-input-number-affix-wrapper > .ant-input-number {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+/* A disabled number/currency field (e.g. Monthly Salary for piece-rate employees)
+   must never show a blinking text caret, even if it had focus when it was disabled. */
+.ant-input-number-disabled input,
+.ant-input-number-affix-wrapper-disabled input {
+  caret-color: transparent !important;
+  cursor: not-allowed !important;
 }
 /* Hide number input spinners (+/-) */
 .ant-input-number-handler-wrap { display: none !important; }
