@@ -14,6 +14,7 @@ import {
   Space, 
   notification,
   Modal,
+  DatePicker,
   Tooltip
 } from 'antd';
 import { 
@@ -52,6 +53,10 @@ const EmployeePage: React.FC = () => {
   
   // Selected employee for view/edit operations
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
+
+  // Activate / deactivate dialog: asks for the effective date (last working / rejoin date).
+  const [statusModal, setStatusModal] = useState<{ open: boolean; employee: IEmployee | null; mode: 'activate' | 'deactivate' }>({ open: false, employee: null, mode: 'deactivate' });
+  const [statusDate, setStatusDate] = useState<any>(dayjs());
 
   // Fetch employees list
   const { data: employeesData, isLoading: employeesLoading } = useQuery({
@@ -121,21 +126,46 @@ const EmployeePage: React.FC = () => {
     },
   });
 
+  const refreshAfterStatus = () => {
+    queryClient.invalidateQueries({ queryKey: ['employees'] });
+    queryClient.invalidateQueries({ queryKey: ['employeeStats'] });
+    queryClient.invalidateQueries({ queryKey: ['employeeDetails'] });
+    setStatusModal({ open: false, employee: null, mode: 'deactivate' });
+  };
+
   const deactivateMutation = useMutation({
-    mutationFn: employeeService.deactivateEmployee,
-    onSuccess: (res) => {
+    mutationFn: ({ id, date }: { id: string; date: string }) => employeeService.deactivateEmployee(id, date),
+    onSuccess: (res: any) => {
       notification.success({
         message: t('employees.toast.success', 'Success'),
         description: res.message || t('employees.toast.deactivated', 'Employee deactivated successfully'),
         placement: 'topRight',
       });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['employeeStats'] });
+      refreshAfterStatus();
     },
     onError: (error: any) => {
       notification.error({
         message: t('employees.toast.error', 'Error'),
         description: error.response?.data?.message || error.message || t('employees.toast.deactivateFailed', 'Failed to deactivate employee'),
+        placement: 'topRight',
+      });
+    },
+  });
+
+  const activateMutation = useMutation({
+    mutationFn: ({ id, date }: { id: string; date: string }) => employeeService.activateEmployee(id, date),
+    onSuccess: (res: any) => {
+      notification.success({
+        message: t('employees.toast.success', 'Success'),
+        description: res.message || t('employees.toast.activated', 'Employee reactivated successfully'),
+        placement: 'topRight',
+      });
+      refreshAfterStatus();
+    },
+    onError: (error: any) => {
+      notification.error({
+        message: t('employees.toast.error', 'Error'),
+        description: error.response?.data?.message || error.message || t('employees.toast.activateFailed', 'Failed to reactivate employee'),
         placement: 'topRight',
       });
     },
@@ -172,18 +202,20 @@ const EmployeePage: React.FC = () => {
     setFormDrawerVisible(true);
   };
 
-  const handleDeactivate = (employee: IEmployee) => {
-    Modal.confirm({
-      title: t('employees.deactivate.title', 'Deactivate Employee'),
-      icon: <ExclamationCircleOutlined style={{ color: 'var(--theme-primary)' }} />,
-      content: `${t('employees.deactivate.confirmBefore', 'Are you sure you want to deactivate')} ${employee.fullName} (${employee.employeeCode})${t('employees.deactivate.confirmAfter', '?')}`,
-      okText: t('employees.deactivate.ok', 'Yes, Deactivate'),
-      cancelText: t('common.cancel', 'Cancel'),
-      okButtonProps: { style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } },
-      onOk: async () => {
-        await deactivateMutation.mutateAsync(employee.id);
-      },
-    });
+  // Open the status dialog; the effective date defaults to today (within the joining date).
+  const openStatusModal = (employee: IEmployee, mode: 'activate' | 'deactivate') => {
+    setStatusDate(dayjs());
+    setStatusModal({ open: true, employee, mode });
+  };
+  const handleDeactivate = (employee: IEmployee) => openStatusModal(employee, 'deactivate');
+  const handleActivate = (employee: IEmployee) => openStatusModal(employee, 'activate');
+
+  const confirmStatusChange = () => {
+    const emp = statusModal.employee;
+    if (!emp || !statusDate) return;
+    const date = statusDate.format('YYYY-MM-DD');
+    if (statusModal.mode === 'deactivate') deactivateMutation.mutate({ id: emp.id, date });
+    else activateMutation.mutate({ id: emp.id, date });
   };
 
   const handleFormSubmit = async (values: any) => {
@@ -340,6 +372,16 @@ const EmployeePage: React.FC = () => {
                 danger
                 icon={<StopOutlined />}
                 onClick={(e) => { e.stopPropagation(); handleDeactivate(record); }}
+                style={{ minWidth: 32, padding: 0 }}
+              />
+            </Tooltip>
+          )}
+          {!record.active && can('employees', 'write') && (
+            <Tooltip title={t('employees.tooltip.activate', 'Reactivate Employee')}>
+              <Button
+                type="text"
+                icon={<CheckCircleOutlined style={{ color: 'var(--theme-primary)' }} />}
+                onClick={(e) => { e.stopPropagation(); handleActivate(record); }}
                 style={{ minWidth: 32, padding: 0 }}
               />
             </Tooltip>
@@ -529,6 +571,42 @@ const EmployeePage: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['employeeDetails'] });
           }}
         />
+
+        {/* Activate / Deactivate with an effective date (last working / rejoin date). */}
+        <Modal
+          open={statusModal.open}
+          title={statusModal.mode === 'deactivate'
+            ? t('employees.deactivate.title', 'Deactivate Employee')
+            : t('employees.activate.title', 'Reactivate Employee')}
+          okText={statusModal.mode === 'deactivate'
+            ? t('employees.deactivate.ok', 'Deactivate')
+            : t('employees.activate.ok', 'Reactivate')}
+          cancelText={t('common.cancel', 'Cancel')}
+          okButtonProps={{ disabled: !statusDate, style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } }}
+          confirmLoading={deactivateMutation.isPending || activateMutation.isPending}
+          onOk={confirmStatusChange}
+          onCancel={() => setStatusModal({ open: false, employee: null, mode: 'deactivate' })}
+          destroyOnClose
+        >
+          <p style={{ color: '#475569', marginTop: 0 }}>
+            {statusModal.mode === 'deactivate'
+              ? `${t('employees.deactivate.datePrompt', 'Pick the last working date for')} ${statusModal.employee?.fullName}. ${t('employees.deactivate.dateHelp', 'Salary is generated only up to this date; later months are treated as leave.')}`
+              : `${t('employees.activate.datePrompt', 'Pick the rejoin date for')} ${statusModal.employee?.fullName}. ${t('employees.activate.dateHelp', 'Salary resumes from this date.')}`}
+          </p>
+          <DatePicker
+            value={statusDate}
+            onChange={(d) => setStatusDate(d)}
+            format="DD-MMM-YYYY"
+            allowClear={false}
+            style={{ width: '100%' }}
+            disabledDate={(c) => {
+              if (!c) return false;
+              if (c.isAfter(dayjs(), 'day')) return true; // no future dates
+              const join = statusModal.employee?.joiningDate;
+              return !!join && c.isBefore(dayjs(join), 'day'); // not before joining
+            }}
+          />
+        </Modal>
       </Box>
     </ConfigProvider>
   );

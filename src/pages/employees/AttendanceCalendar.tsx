@@ -30,6 +30,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
   const [sel, setSel] = useState<dayjs.Dayjs | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const [listFilter, setListFilter] = useState<'ALL' | 'ABSENT' | 'HALF_DAY'>('ALL');
+  // Leaves older than 1 month are locked: not editable/deletable and not counted.
+  const lockBefore = dayjs().subtract(1, 'month');
+  const isLocked = (d: string) => dayjs(d).isBefore(lockBefore, 'day');
+  // Drawer date filter — defaults to 1 month back → 2 months ahead (user can widen it).
+  const [listRange, setListRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(1, 'month').startOf('day'), dayjs().add(2, 'month').endOf('day'),
+  ]);
   // Apply-leave modal (date range or a single day).
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveForm] = Form.useForm();
@@ -58,29 +65,31 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
     return m;
   }, [data]);
 
-  // Wider window (recent past → upcoming) so future-marked leaves are visible in a list.
-  const listFrom = dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
-  const listTo = dayjs().add(3, 'month').endOf('month').format('YYYY-MM-DD');
+  // List window follows the drawer's date filter.
+  const listFrom = listRange[0].format('YYYY-MM-DD');
+  const listTo = listRange[1].format('YYYY-MM-DD');
   const { data: listData } = useQuery({
     queryKey: ['attendance', employeeId, 'list', listFrom, listTo],
     queryFn: () => employeeService.getAttendance(employeeId, listFrom, listTo),
     enabled: !!employeeId,
   });
   const markedList = (listData?.data || []).slice().sort((a: any, b: any) => a.date.localeCompare(b.date));
+  // Count excludes locked (older than 1 month) leaves.
+  const activeCount = markedList.filter((a: any) => !isLocked(a.date)).length;
 
   // Collapse consecutive same-status days into ranges: 13,14,15 Absent → {13→15, ABSENT}.
   const groupedRanges = useMemo(() => {
     const filtered = markedList.filter((a: any) => listFilter === 'ALL' || a.status === listFilter);
-    const out: { fromDate: string; toDate: string; status: string }[] = [];
+    const out: { fromDate: string; toDate: string; status: string; locked: boolean }[] = [];
     for (const a of filtered) {
       const last = out[out.length - 1];
       if (last && last.status === a.status && dayjs(a.date).diff(dayjs(last.toDate), 'day') === 1) {
         last.toDate = a.date;
       } else {
-        out.push({ fromDate: a.date, toDate: a.date, status: a.status });
+        out.push({ fromDate: a.date, toDate: a.date, status: a.status, locked: isLocked(a.date) });
       }
     }
-    return out;
+    return out.reverse(); // latest on top
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listData, listFilter]);
 
@@ -97,6 +106,20 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
     await Promise.all(days.map((dt) => employeeService.clearAttendance(employeeId, dt)));
     refetch();
   };
+
+  // Delete a leave range from the drawer, with a themed confirmation.
+  const confirmClear = (fromDate: string, toDate: string, label: string) => {
+    Modal.confirm({
+      title: t('employees.attendance.deleteTitle', 'Remove this leave?'),
+      content: label,
+      okText: t('common.delete', 'Delete'),
+      cancelText: t('common.cancel', 'Cancel'),
+      okButtonProps: { style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } },
+      onOk: () => clearRange(fromDate, toDate),
+    });
+  };
+
+  const selLocked = sel ? isLocked(sel.format('YYYY-MM-DD')) : false;
 
   const mark = async (status: 'ABSENT' | 'HALF_DAY') => {
     if (!sel) return;
@@ -144,7 +167,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
       {/* One row, right-aligned: Marked days first, then the month picker (follows the global filter). */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
         <Button icon={<UnorderedListOutlined />} onClick={() => setListOpen(true)}>
-          {t('employees.attendance.marked', 'Marked days')} ({markedList.length})
+          {t('employees.attendance.marked', 'Marked days')} ({activeCount})
         </Button>
         <DatePicker
           picker="month" value={month} format="MMMM YYYY" allowClear={false}
@@ -166,6 +189,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
       <Drawer open={listOpen} onClose={() => setListOpen(false)} placement="right" width={380} zIndex={1300}
         title={t('employees.attendance.marked', 'Marked days')}
       >
+        <RangePicker value={listRange as any} onChange={(d) => { if (d && d[0] && d[1]) setListRange([d[0], d[1]]); }}
+          format="DD-MMM-YYYY" allowClear={false} style={{ width: '100%', marginBottom: 10 }} />
         <Select value={listFilter} onChange={(v) => setListFilter(v)} style={{ width: '100%', marginBottom: 12 }}
           options={[
             { value: 'ALL', label: t('common.all', 'All') },
@@ -190,7 +215,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
                 <Tag color={r.status === 'ABSENT' ? 'error' : 'blue'} style={{ margin: 0 }}>
                   {r.status === 'ABSENT' ? t('employees.attendance.absent', 'Absent') : t('employees.attendance.half', '½ Day')}
                 </Tag>
-                <Button size="small" type="text" danger onClick={() => clearRange(r.fromDate, r.toDate)}>×</Button>
+                {r.locked ? (
+                  <Tag style={{ margin: 0, color: '#94A3B8', borderColor: '#E2E8F0' }}>{t('employees.attendance.locked', 'Locked')}</Tag>
+                ) : (
+                  <Button size="small" type="text" danger onClick={() => confirmClear(r.fromDate, r.toDate, label)}>×</Button>
+                )}
               </span>
             </div>
           );
@@ -198,11 +227,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
       </Drawer>
 
       <Modal open={!!sel} onCancel={() => setSel(null)} footer={null} title={sel ? sel.format('DD MMM YYYY') : ''} zIndex={1300}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-          <Button danger onClick={() => mark('ABSENT')}>{t('employees.attendance.markAbsent', 'Mark Absent')}</Button>
-          <Button onClick={() => mark('HALF_DAY')}>{t('employees.attendance.markHalf', 'Mark Half-day')}</Button>
-          {map[selKey] && <Button type="dashed" onClick={clear}>{t('employees.attendance.clear', 'Clear (Present)')}</Button>}
-        </div>
+        {selLocked ? (
+          <div style={{ marginTop: 8, color: '#64748B' }}>
+            {t('employees.attendance.lockedMsg', 'This date is older than 1 month and is locked. It cannot be updated or deleted.')}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+            <Button danger onClick={() => mark('ABSENT')}>{t('employees.attendance.markAbsent', 'Mark Absent')}</Button>
+            <Button onClick={() => mark('HALF_DAY')}>{t('employees.attendance.markHalf', 'Mark Half-day')}</Button>
+            {map[selKey] && <Button type="dashed" onClick={clear}>{t('employees.attendance.clear', 'Clear (Present)')}</Button>}
+          </div>
+        )}
       </Modal>
 
       {/* Apply leave for a date range or a single day (from "Record Leave") */}

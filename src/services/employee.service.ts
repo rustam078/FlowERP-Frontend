@@ -32,11 +32,20 @@ export const employeeService = {
   },
 
   /**
-   * Deactivate an existing employee.
+   * Deactivate an employee from a last-working date (salary stops after it).
    * PATCH /api/employees/{id}/status
    */
-  deactivateEmployee: async (id: string) => {
-    const response = await axiosInstance.patch(`/employees/${id}/status`, { active: false });
+  deactivateEmployee: async (id: string, lastWorkingDate: string) => {
+    const response = await axiosInstance.patch(`/employees/${id}/status`, { active: false, effectiveDate: lastWorkingDate });
+    return response.data;
+  },
+
+  /**
+   * Reactivate an employee from a rejoin date (salary resumes from it).
+   * PATCH /api/employees/{id}/status
+   */
+  activateEmployee: async (id: string, rejoinDate: string) => {
+    const response = await axiosInstance.patch(`/employees/${id}/status`, { active: true, effectiveDate: rejoinDate });
     return response.data;
   },
 

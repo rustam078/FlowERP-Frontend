@@ -179,10 +179,13 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
       title: t('common.actions', 'Actions'), key: 'action',
       render: (_: any, r: any) => (
         <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          {r.due > 0 && (
+          {r.due > 0 ? (
             <Tooltip title={r.payable ? '' : t('employees.payroll.notPayableYet', 'Payable from next month')}>
               <Button size="small" type="primary" icon={<CheckOutlined />} disabled={!r.payable} onClick={() => setPayTarget(r)}>{t('employees.payroll.markPaid', 'Pay')}</Button>
             </Tooltip>
+          ) : (
+            // Paid months keep a green, disabled button in place so the column stays aligned.
+            <Button size="small" icon={<CheckOutlined />} disabled style={{ color: '#16A34A', borderColor: '#16A34A', background: 'color-mix(in srgb, #16A34A 10%, white)', fontWeight: 600 }}>{t('employees.payroll.paid', 'Paid')}</Button>
           )}
           <Tooltip title={t('employees.payroll.download', 'Download')}><Button size="small" type="text" icon={<DownloadOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'download')} /></Tooltip>
           <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'print')} /></Tooltip>

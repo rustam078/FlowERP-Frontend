@@ -46,12 +46,20 @@ export default {
     // Tooltips
     'employees.tooltip.edit': 'Edit Employee',
     'employees.tooltip.deactivate': 'Deactivate Employee',
+    'employees.tooltip.activate': 'Reactivate Employee',
 
     // Deactivate modal
     'employees.deactivate.title': 'Deactivate Employee',
     'employees.deactivate.confirmBefore': 'Are you sure you want to deactivate',
     'employees.deactivate.confirmAfter': '?',
-    'employees.deactivate.ok': 'Yes, Deactivate',
+    'employees.deactivate.ok': 'Deactivate',
+    'employees.deactivate.datePrompt': 'Pick the last working date for',
+    'employees.deactivate.dateHelp': 'Salary is generated only up to this date; later months are treated as leave.',
+    // Reactivate modal
+    'employees.activate.title': 'Reactivate Employee',
+    'employees.activate.ok': 'Reactivate',
+    'employees.activate.datePrompt': 'Pick the rejoin date for',
+    'employees.activate.dateHelp': 'Salary resumes from this date.',
 
     // Toast / notifications
     'employees.toast.success': 'Success',
@@ -62,6 +70,8 @@ export default {
     'employees.toast.updateFailed': 'Failed to update employee',
     'employees.toast.deactivated': 'Employee deactivated successfully',
     'employees.toast.deactivateFailed': 'Failed to deactivate employee',
+    'employees.toast.activated': 'Employee reactivated successfully',
+    'employees.toast.activateFailed': 'Failed to reactivate employee',
     'employees.toast.reportFailed': 'Report download failed',
 
     // Details page error
@@ -175,6 +185,7 @@ export default {
     'employees.payroll.leave': 'Leave',
     'employees.payroll.markPaid': 'Pay',
     'employees.payroll.markPaidFor': 'Pay',
+    'employees.payroll.paid': 'Paid',
     'employees.payroll.download': 'Download',
     'employees.payroll.print': 'Print',
     'employees.payroll.email': 'Email',
@@ -340,12 +351,20 @@ export default {
     // Tooltips
     'employees.tooltip.edit': 'कर्मचारी संपादित करें',
     'employees.tooltip.deactivate': 'कर्मचारी निष्क्रिय करें',
+    'employees.tooltip.activate': 'कर्मचारी पुनः सक्रिय करें',
 
     // Deactivate modal
     'employees.deactivate.title': 'कर्मचारी निष्क्रिय करें',
     'employees.deactivate.confirmBefore': 'क्या आप वाकई',
     'employees.deactivate.confirmAfter': ' को निष्क्रिय करना चाहते हैं?',
-    'employees.deactivate.ok': 'हाँ, निष्क्रिय करें',
+    'employees.deactivate.ok': 'निष्क्रिय करें',
+    'employees.deactivate.datePrompt': 'अंतिम कार्य तिथि चुनें —',
+    'employees.deactivate.dateHelp': 'वेतन केवल इस तिथि तक बनता है; बाद के महीने छुट्टी माने जाते हैं।',
+    // Reactivate modal
+    'employees.activate.title': 'कर्मचारी पुनः सक्रिय करें',
+    'employees.activate.ok': 'पुनः सक्रिय करें',
+    'employees.activate.datePrompt': 'पुनः ज्वाइनिंग तिथि चुनें —',
+    'employees.activate.dateHelp': 'वेतन इस तिथि से पुनः शुरू होता है।',
 
     // Toast / notifications
     'employees.toast.success': 'सफल',
@@ -356,6 +375,8 @@ export default {
     'employees.toast.updateFailed': 'कर्मचारी अपडेट करने में विफल',
     'employees.toast.deactivated': 'कर्मचारी सफलतापूर्वक निष्क्रिय किया गया',
     'employees.toast.deactivateFailed': 'कर्मचारी निष्क्रिय करने में विफल',
+    'employees.toast.activated': 'कर्मचारी सफलतापूर्वक पुनः सक्रिय किया गया',
+    'employees.toast.activateFailed': 'कर्मचारी पुनः सक्रिय करने में विफल',
     'employees.toast.reportFailed': 'रिपोर्ट डाउनलोड विफल',
 
     // Details page error
@@ -469,6 +490,7 @@ export default {
     'employees.payroll.leave': 'छुट्टी',
     'employees.payroll.markPaid': 'पे करें',
     'employees.payroll.markPaidFor': 'पे करें',
+    'employees.payroll.paid': 'भुगतान हो गया',
     'employees.payroll.download': 'डाउनलोड',
     'employees.payroll.print': 'प्रिंट',
     'employees.payroll.email': 'ईमेल',
