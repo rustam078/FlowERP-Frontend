@@ -32,20 +32,29 @@ export const employeeService = {
   },
 
   /**
-   * Deactivate an employee from a last-working date (salary stops after it).
+   * Make an employee inactive from the inactive date (first non-working day; salary stops from it).
    * PATCH /api/employees/{id}/status
    */
-  deactivateEmployee: async (id: string, lastWorkingDate: string) => {
-    const response = await axiosInstance.patch(`/employees/${id}/status`, { active: false, effectiveDate: lastWorkingDate });
+  deactivateEmployee: async (id: string, inactiveDate: string) => {
+    const response = await axiosInstance.patch(`/employees/${id}/status`, { active: false, effectiveDate: inactiveDate });
     return response.data;
   },
 
   /**
-   * Reactivate an employee from a rejoin date (salary resumes from it).
+   * Reactivate an employee from the reactivation date (a working day; salary resumes from it).
    * PATCH /api/employees/{id}/status
    */
-  activateEmployee: async (id: string, rejoinDate: string) => {
-    const response = await axiosInstance.patch(`/employees/${id}/status`, { active: true, effectiveDate: rejoinDate });
+  activateEmployee: async (id: string, reactivationDate: string) => {
+    const response = await axiosInstance.patch(`/employees/${id}/status`, { active: true, effectiveDate: reactivationDate });
+    return response.data;
+  },
+
+  /**
+   * Allowed date range for the next status change: { action, minDate, maxDate } (forward-only).
+   * GET /api/employees/{id}/status-window
+   */
+  getStatusWindow: async (id: string) => {
+    const response = await axiosInstance.get(`/employees/${id}/status-window`);
     return response.data;
   },
 

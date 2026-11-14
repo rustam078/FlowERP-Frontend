@@ -99,12 +99,20 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
     qc.invalidateQueries({ queryKey: ['payroll', employeeId] });
     qc.invalidateQueries({ queryKey: ['employeeDetails', employeeId] });
   };
+  // Backend rejections (e.g. the month's salary is paid and locked) are shown, never swallowed.
+  const showError = (e: any) => notification.error({
+    message: t('employees.attendance.updateFailed', 'Could not update attendance'),
+    description: e?.message, placement: 'topRight',
+  });
+
   const clearRange = async (fromDate: string, toDate: string) => {
     const days: string[] = [];
     let d = dayjs(fromDate);
     while (!d.isAfter(dayjs(toDate), 'day')) { days.push(d.format('YYYY-MM-DD')); d = d.add(1, 'day'); }
-    await Promise.all(days.map((dt) => employeeService.clearAttendance(employeeId, dt)));
+    const results = await Promise.allSettled(days.map((dt) => employeeService.clearAttendance(employeeId, dt)));
     refetch();
+    const failed = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    if (failed) showError(failed.reason);
   };
 
   // Delete a leave range from the drawer, with a themed confirmation.
@@ -123,13 +131,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
 
   const mark = async (status: 'ABSENT' | 'HALF_DAY') => {
     if (!sel) return;
-    await employeeService.markAttendance(employeeId, sel.format('YYYY-MM-DD'), status);
-    setSel(null); refetch();
+    try {
+      await employeeService.markAttendance(employeeId, sel.format('YYYY-MM-DD'), status);
+      setSel(null); refetch();
+    } catch (e) { showError(e); }
   };
   const clear = async () => {
     if (!sel) return;
-    await employeeService.clearAttendance(employeeId, sel.format('YYYY-MM-DD'));
-    setSel(null); refetch();
+    try {
+      await employeeService.clearAttendance(employeeId, sel.format('YYYY-MM-DD'));
+      setSel(null); refetch();
+    } catch (e) { showError(e); }
   };
 
   // Apply leave over a date range (a single day = same start/end). Jumps the calendar to it.
@@ -143,6 +155,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
       if (start.month() !== month.month() || start.year() !== month.year()) setMonth(start);
       refetch();
       notification.success({ message: t('employees.attendance.rangeMarked', 'Leave applied'), placement: 'topRight' });
+    } catch (e) {
+      showError(e);
     } finally {
       setApplying(false);
     }
@@ -153,7 +167,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
     if (info.type !== 'date') return info.originNode;
     const st = map[current.format('YYYY-MM-DD')];
     if (!st) return null;
-    const color = st === 'ABSENT' ? '#DC2626' : '#2563EB';
+    const color = st === 'ABSENT' ? '#DC2626' : st === 'INACTIVE' ? '#C0C0C0': '#2563EB';
     return (
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 1 }}>
         <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, display: 'inline-block', boxShadow: `0 0 0 2px color-mix(in srgb, ${color} 22%, white)` }} />
@@ -196,6 +210,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
             { value: 'ALL', label: t('common.all', 'All') },
             { value: 'ABSENT', label: t('employees.attendance.absent', 'Absent') },
             { value: 'HALF_DAY', label: t('employees.attendance.half', '½ Day') },
+            { value: 'INACTIVE', label: t('employees.attendance.inactive', 'Inactive') },
           ]}
         />
         {groupedRanges.length === 0 ? (
@@ -212,10 +227,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ employeeId, foc
                 {future && <Tag color="blue" style={{ marginLeft: 6 }}>{t('employees.attendance.upcoming', 'Upcoming')}</Tag>}
               </span>
               <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <Tag color={r.status === 'ABSENT' ? 'error' : 'blue'} style={{ margin: 0 }}>
-                  {r.status === 'ABSENT' ? t('employees.attendance.absent', 'Absent') : t('employees.attendance.half', '½ Day')}
+                <Tag color={    r.status === 'ABSENT' ? 'error' : r.status === 'INACTIVE' ? 'default': 'blue'} style={{ margin: 0 }}>
+                  {r.status === 'ABSENT'? t('employees.attendance.absent', 'Absent') : r.status === 'HALF_DAY'? t('employees.attendance.half', '½ Day'): t('employees.attendance.inactive', 'Inactive')}
                 </Tag>
-                {r.locked ? (
+                {r.status === 'INACTIVE' ? (<Tag style={{ margin: 0, color: '#94A3B8', borderColor: '#E2E8F0' }}>{t('employees.attendance.locked', 'Locked')} </Tag>
+                ) :r.locked ? (
                   <Tag style={{ margin: 0, color: '#94A3B8', borderColor: '#E2E8F0' }}>{t('employees.attendance.locked', 'Locked')}</Tag>
                 ) : (
                   <Button size="small" type="text" danger onClick={() => confirmClear(r.fromDate, r.toDate, label)}>×</Button>

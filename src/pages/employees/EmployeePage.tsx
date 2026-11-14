@@ -54,9 +54,21 @@ const EmployeePage: React.FC = () => {
   // Selected employee for view/edit operations
   const [selectedEmployee, setSelectedEmployee] = useState<IEmployee | null>(null);
 
-  // Activate / deactivate dialog: asks for the effective date (last working / rejoin date).
+  // Activate / deactivate dialog: asks for the effective date (inactive date / reactivation date).
   const [statusModal, setStatusModal] = useState<{ open: boolean; employee: IEmployee | null; mode: 'activate' | 'deactivate' }>({ open: false, employee: null, mode: 'deactivate' });
   const [statusDate, setStatusDate] = useState<any>(dayjs());
+
+  // Forward-only date limits from the backend (after the last status change and any paid/locked month).
+  const statusEmployeeId = statusModal.employee?.id;
+  const { data: statusWindowData, isFetching: statusWindowLoading } = useQuery({
+    queryKey: ['statusWindow', statusEmployeeId],
+    queryFn: () => employeeService.getStatusWindow(statusEmployeeId as string),
+    enabled: statusModal.open && !!statusEmployeeId,
+    staleTime: 0,
+  });
+  const statusMinDate = statusWindowData?.data?.minDate ? dayjs(statusWindowData.data.minDate) : null;
+  const statusMaxDate = statusWindowData?.data?.maxDate ? dayjs(statusWindowData.data.maxDate) : dayjs();
+  const noValidStatusDate = !!statusMinDate && statusMinDate.isAfter(statusMaxDate, 'day');
 
   // Fetch employees list
   const { data: employeesData, isLoading: employeesLoading } = useQuery({
@@ -126,10 +138,13 @@ const EmployeePage: React.FC = () => {
     },
   });
 
+  // A status change re-shapes the employee's payroll months, so refresh payroll views too.
   const refreshAfterStatus = () => {
     queryClient.invalidateQueries({ queryKey: ['employees'] });
     queryClient.invalidateQueries({ queryKey: ['employeeStats'] });
     queryClient.invalidateQueries({ queryKey: ['employeeDetails'] });
+    queryClient.invalidateQueries({ queryKey: ['payroll'] });
+    queryClient.invalidateQueries({ queryKey: ['statusWindow'] });
     setStatusModal({ open: false, employee: null, mode: 'deactivate' });
   };
 
@@ -572,7 +587,7 @@ const EmployeePage: React.FC = () => {
           }}
         />
 
-        {/* Activate / Deactivate with an effective date (last working / rejoin date). */}
+        {/* Activate / Deactivate with an effective date (inactive date / reactivation date). */}
         <Modal
           open={statusModal.open}
           title={statusModal.mode === 'deactivate'
@@ -582,7 +597,10 @@ const EmployeePage: React.FC = () => {
             ? t('employees.deactivate.ok', 'Deactivate')
             : t('employees.activate.ok', 'Reactivate')}
           cancelText={t('common.cancel', 'Cancel')}
-          okButtonProps={{ disabled: !statusDate, style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } }}
+          okButtonProps={{
+            disabled: !statusDate || statusWindowLoading || noValidStatusDate,
+            style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' },
+          }}
           confirmLoading={deactivateMutation.isPending || activateMutation.isPending}
           onOk={confirmStatusChange}
           onCancel={() => setStatusModal({ open: false, employee: null, mode: 'deactivate' })}
@@ -590,22 +608,32 @@ const EmployeePage: React.FC = () => {
         >
           <p style={{ color: '#475569', marginTop: 0 }}>
             {statusModal.mode === 'deactivate'
-              ? `${t('employees.deactivate.datePrompt', 'Pick the last working date for')} ${statusModal.employee?.fullName}. ${t('employees.deactivate.dateHelp', 'Salary is generated only up to this date; later months are treated as leave.')}`
-              : `${t('employees.activate.datePrompt', 'Pick the rejoin date for')} ${statusModal.employee?.fullName}. ${t('employees.activate.dateHelp', 'Salary resumes from this date.')}`}
+              ? `${t('employees.deactivate.datePrompt', 'Pick the inactive date for')} ${statusModal.employee?.fullName}. ${t('employees.deactivate.dateHelp', 'This is the first day they are not working — salary stops from this date, and months with no working day show as Inactive.')}`
+              : `${t('employees.activate.datePrompt', 'Pick the reactivation date for')} ${statusModal.employee?.fullName}. ${t('employees.activate.dateHelp', 'This day counts as a working day — salary resumes from it.')}`}
           </p>
-          <DatePicker
-            value={statusDate}
-            onChange={(d) => setStatusDate(d)}
-            format="DD-MMM-YYYY"
-            allowClear={false}
-            style={{ width: '100%' }}
-            disabledDate={(c) => {
-              if (!c) return false;
-              if (c.isAfter(dayjs(), 'day')) return true; // no future dates
-              const join = statusModal.employee?.joiningDate;
-              return !!join && c.isBefore(dayjs(join), 'day'); // not before joining
-            }}
-          />
+          {noValidStatusDate ? (
+            <Typography sx={{ color: '#B45309', fontSize: '0.85rem' }}>
+              {t('employees.status.noValidDate', 'No date is available yet: the change must come after')} {statusMinDate?.subtract(1, 'day').format('DD-MMM-YYYY')}.
+            </Typography>
+          ) : (
+            <>
+              <DatePicker
+                value={statusDate}
+                onChange={(d) => setStatusDate(d)}
+                format="DD-MMM-YYYY"
+                allowClear={false}
+                style={{ width: '100%' }}
+                disabled={statusWindowLoading}
+                // Forward-only: after the last status change / locked month, and never in the future.
+                disabledDate={(c) => !!c && (c.isAfter(statusMaxDate, 'day') || (!!statusMinDate && c.isBefore(statusMinDate, 'day')))}
+              />
+              {statusMinDate && (
+                <div style={{ color: '#94A3B8', fontSize: '0.78rem', marginTop: 6 }}>
+                  {t('employees.status.earliestDate', 'Earliest allowed date')}: {statusMinDate.format('DD-MMM-YYYY')}
+                </div>
+              )}
+            </>
+          )}
         </Modal>
       </Box>
     </ConfigProvider>

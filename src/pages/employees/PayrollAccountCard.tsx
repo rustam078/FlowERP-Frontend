@@ -65,9 +65,9 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
   const qc = useQueryClient();
   const [payTarget, setPayTarget] = useState<any | null>(null); // slip being settled
 
-  // Server-side paging/filtering state (1-based current for AntD).
-  const [slipPage, setSlipPage] = useState(1);
-  const [slipSize, setSlipSize] = useState(10);
+  // Salary slips are shown one calendar year at a time (current year by default).
+  const [year, setYear] = useState<number>(dayjs().year());
+  // Server-side paging/filtering state for transactions (1-based current for AntD).
   const [txnPage, setTxnPage] = useState(1);
   const [txnSize, setTxnSize] = useState(10);
   const [txnFilter, setTxnFilter] = useState<'ALL' | 'ADVANCE' | 'SPEND' | 'SETTLEMENT'>('ALL');
@@ -80,7 +80,7 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
 
   // The card's own popover range takes precedence; otherwise the page's global filter applies.
   const params = {
-    slipPage: slipPage - 1, slipSize,
+    year,
     txnPage: txnPage - 1, txnSize,
     txnType: txnFilter === 'ALL' ? undefined : txnFilter,
     txnFrom: txnRange?.[0] ? txnRange[0].format('YYYY-MM-DD') : fromDate,
@@ -158,35 +158,50 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
   );
 
   // ── Pay-slips tab ──
+  // A month is ACTIVE (worked at least one day) or INACTIVE (no payslip, nothing payable).
+  const isInactive = (r: any) => r.monthStatus === 'INACTIVE';
+  const dash = <span style={{ color: '#94A3B8' }}>—</span>;
+  const currentTagStyle: React.CSSProperties = { margin: 0, color: 'var(--theme-primary)', background: 'color-mix(in srgb, var(--theme-primary) 10%, white)', border: 'none' };
+  const monthStatusTag = (r: any) => isInactive(r)
+    ? <Tag style={{ margin: 0, color: '#64748B', background: '#F1F5F9', border: 'none' }}>{t('employees.payroll.inactive', 'Inactive')}</Tag>
+    :null;
+
+  // Pay button for a month with a balance; paid months keep a green, disabled button in place.
+  const payButton = (r: any) => r.due > 0 ? (
+    <Tooltip title={r.payable ? '' : t('employees.payroll.notPayableYet', 'Payable from next month')}>
+      <Button size="small" type="primary" icon={<CheckOutlined />} disabled={!r.payable} onClick={() => setPayTarget(r)}>{t('employees.payroll.markPaid', 'Pay')}</Button>
+    </Tooltip>
+  ) : (
+    <Tooltip title={r.finalized ? t('employees.payroll.lockedTip', 'Fully paid — this month is locked') : ''}>
+      <Button size="small" icon={<CheckOutlined />} disabled style={{ color: '#16A34A', borderColor: '#16A34A', background: 'color-mix(in srgb, #16A34A 10%, white)', fontWeight: 600 }}>{t('employees.payroll.paid', 'Paid')}</Button>
+    </Tooltip>
+  );
+
   const slipColumns = [
     {
       title: t('employees.payroll.month', 'Month'), dataIndex: 'monthLabel', key: 'month',
       render: (m: string, r: any) => (
-        <span style={{ fontWeight: 700, color: '#0F172A' }}>{m}{r.current && <Tag style={{ marginLeft: 6, color: 'var(--theme-primary)', background: 'color-mix(in srgb, var(--theme-primary) 10%, white)', border: 'none' }}>{t('employees.payroll.current', 'Current')}</Tag>}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap' }}>
+          {m}{monthStatusTag(r)}{r.current && <Tag style={currentTagStyle}>{t('employees.payroll.current', 'Current')}</Tag>}
+        </span>
       ),
     },
-    { title: t('employees.payroll.salary', 'Salary'), key: 'salary', render: () => <span style={{ color: '#475569', fontWeight: 600 }}>{inr(payroll?.monthlySalary ?? 0)}</span> },
-    { title: t('employees.payroll.earned', 'Earned'), dataIndex: 'earned', key: 'earned', render: (v: number) => <span style={{ fontWeight: 700, color: '#0F172A' }}>{inr(v)}</span> },
+    { title: t('employees.payroll.daysWorked', 'Days worked'), key: 'days', render: (_: any, r: any) => isInactive(r) ? dash : <span style={{ color: '#475569' }}>{Math.max(0, r.activeDays - (r.leaveDays || 0))}/{r.monthDays}</span> },
+    // { title: t('employees.payroll.salary', 'Salary'), key: 'salary', render: (_: any, r: any) => isInactive(r) ? dash : <span style={{ color: '#475569', fontWeight: 600 }}>{inr(r.monthlySalary)}</span> },
+    { title: t('employees.payroll.earned', 'Earned'), dataIndex: 'earned', key: 'earned', render: (v: number, r: any) => isInactive(r) ? dash : <span style={{ fontWeight: 700, color: '#0F172A' }}>{inr(v)}</span> },
     {
       title: t('employees.payroll.leave', 'Leave'), key: 'leave',
       render: (_: any, r: any) => r.leaveDeduction > 0
         ? <span style={{ color: '#DC2626', fontWeight: 600 }}>− {inr(r.leaveDeduction)} <span style={{ fontWeight: 400, fontSize: '0.78rem' }}>({r.leaveDays} {t('employees.payroll.days', 'days')})</span></span>
-        : <span style={{ color: '#94A3B8' }}>–</span>,
+        : dash,
     },
-    { title: t('employees.payroll.due', 'Due'), dataIndex: 'due', key: 'due', render: (v: number) => <span style={{ fontWeight: 700, color: v > 0 ? '#DC2626' : '#16A34A' }}>{inr(v)}</span> },
-    { title: t('common.status', 'Status'), dataIndex: 'status', key: 'status', render: (s: string) => <Tag color={STATUS[s]?.color}>{t(STATUS[s]?.key, STATUS[s]?.fallback)}</Tag> },
+    { title: t('employees.payroll.due', 'Due'), dataIndex: 'due', key: 'due', render: (v: number, r: any) => isInactive(r) ? dash : <span style={{ fontWeight: 700, color: v > 0 ? '#DC2626' : '#16A34A' }}>{inr(v)}</span> },
+    { title: t('common.status', 'Status'), dataIndex: 'status', key: 'status', render: (s: string) => s ? <Tag color={STATUS[s]?.color}>{t(STATUS[s]?.key, STATUS[s]?.fallback)}</Tag> : dash },
     {
       title: t('common.actions', 'Actions'), key: 'action',
-      render: (_: any, r: any) => (
+      render: (_: any, r: any) => isInactive(r) ? dash : (
         <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          {r.due > 0 ? (
-            <Tooltip title={r.payable ? '' : t('employees.payroll.notPayableYet', 'Payable from next month')}>
-              <Button size="small" type="primary" icon={<CheckOutlined />} disabled={!r.payable} onClick={() => setPayTarget(r)}>{t('employees.payroll.markPaid', 'Pay')}</Button>
-            </Tooltip>
-          ) : (
-            // Paid months keep a green, disabled button in place so the column stays aligned.
-            <Button size="small" icon={<CheckOutlined />} disabled style={{ color: '#16A34A', borderColor: '#16A34A', background: 'color-mix(in srgb, #16A34A 10%, white)', fontWeight: 600 }}>{t('employees.payroll.paid', 'Paid')}</Button>
-          )}
+          {(r.status || r.status === null) && payButton(r)}
           <Tooltip title={t('employees.payroll.download', 'Download')}><Button size="small" type="text" icon={<DownloadOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'download')} /></Tooltip>
           <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'print')} /></Tooltip>
           <Tooltip title={t('employees.payroll.send', 'Send')}><Button size="small" type="text" icon={<MailOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'send')} /></Tooltip>
@@ -194,6 +209,14 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
       ),
     },
   ];
+
+  // Year picker on the tab bar (Salary Payslip tab): joining year → current year.
+  const years: number[] = payroll?.availableYears?.length ? payroll.availableYears : [year];
+  const yearExtra = (
+    <Select size="small" value={year} onChange={setYear} style={{ width: 96 }}
+      getPopupContainer={(tr) => tr.parentElement as HTMLElement}
+      options={years.map((y: number) => ({ value: y, label: String(y) }))} />
+  );
 
   // ── Transactions tab ──
   // Advance/Expense/Direct-Payment/Opening = money to the employee (+); settled-from-advance = (−).
@@ -255,11 +278,8 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
           <Table
             size="small" dataSource={slips} columns={slipColumns} rowKey="period"
             scroll={{ y: SCROLL_Y, x: 'max-content' }}
-            pagination={{
-              current: slipPage, pageSize: slipSize, total: payroll?.slipTotal ?? 0,
-              size: 'small', showSizeChanger: true, pageSizeOptions: ['10', '25', '50', '100'],
-            }}
-            onChange={(pg) => { setSlipPage(pg.current || 1); setSlipSize(pg.pageSize || 10); }}
+            pagination={false}
+            onRow={(r: any) => ({ style: isInactive(r) ? { background: '#F8FAFC' } : undefined })}
           />
         ),
       }
@@ -315,7 +335,8 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
       style={cardStyle}
       styles={{ body: { padding: 16 } }}
     >
-      <Tabs className="payroll-tabs" size="small" activeKey={tab} onChange={setTab} items={items} tabBarExtraContent={{ right: tab === 'txns' ? filterExtra : undefined }} />
+      <Tabs className="payroll-tabs" size="small" activeKey={tab} onChange={setTab} items={items}
+        tabBarExtraContent={{ right: tab === 'txns' ? filterExtra : tab === 'slips' ? yearExtra : undefined }} />
 
       {/* One settle form (date + advance toggle + amount + note) for a payable slip */}
       <SettlePaymentModal
