@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   Badge, Box, Button, Divider, FormControl, InputLabel, MenuItem, Popover, Select, Stack, TextField, Typography,
@@ -63,7 +64,7 @@ const TotalsLine = ({ tab, data }) => {
 };
 
 /** One Revenue tab: its own filters, totals and paged table (state survives tab switches). */
-const RevenueTab = ({ tab }) => {
+const RevenueTab = ({ tab, active, toolbarEl }) => {
   const t = useT();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(0);
@@ -88,14 +89,18 @@ const RevenueTab = ({ tab }) => {
 
   return (
     <Box>
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5} sx={{ mb: 2 }}>
-        <TotalsLine tab={tab} data={data} />
-        <Badge color="primary" badgeContent={activeCount} overlap="circular">
-          <Button variant="outlined" startIcon={<FilterListIcon />} onClick={(e) => setAnchor(e.currentTarget)} sx={{ borderColor: 'divider', color: '#334155' }}>
-            {t('common.filters', 'Filters')}
-          </Button>
-        </Badge>
-      </Stack>
+      {/* Totals + Filters sit in the page's tab row (only the visible tab renders them there). */}
+      {active && toolbarEl ? createPortal(
+        <>
+          <TotalsLine tab={tab} data={data} />
+          <Badge color="primary" badgeContent={activeCount} overlap="circular">
+            <Button variant="outlined" startIcon={<FilterListIcon />} onClick={(e) => setAnchor(e.currentTarget)} sx={{ borderColor: 'divider', color: '#334155' }}>
+              {t('common.filters', 'Filters')}
+            </Button>
+          </Badge>
+        </>,
+        toolbarEl,
+      ) : null}
 
       <Popover
         open={Boolean(anchor)} anchorEl={anchor} onClose={() => setAnchor(null)}
