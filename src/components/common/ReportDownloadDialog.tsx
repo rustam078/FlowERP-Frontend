@@ -3,6 +3,7 @@ import { Modal, Radio, DatePicker, Button, Space, Typography } from 'antd';
 import { FilePdfOutlined, FileExcelOutlined, PrinterOutlined, MailOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useT } from '../../contexts/LanguageContext';
+import { useAppSettings } from '../../contexts/AppSettingsContext';
 
 const { RangePicker } = DatePicker;
 const MAX_DAYS = 90;
@@ -21,6 +22,7 @@ interface Props {
 /** Report range picker (current month / particular month / custom ≤90 days) + PDF/Excel buttons. */
 const ReportDownloadDialog: React.FC<Props> = ({ open, title, onClose, onDownload, onPrint, onSend }) => {
   const t = useT();
+  const { printEnabled } = useAppSettings();
   const heading = title ?? t('ui.report.title', 'Download report');
   const [mode, setMode] = useState<'current' | 'month' | 'range'>('current');
   const [month, setMonth] = useState<Dayjs>(dayjs());
@@ -123,7 +125,7 @@ const ReportDownloadDialog: React.FC<Props> = ({ open, title, onClose, onDownloa
       {error && <Typography.Text type="danger" style={{ display: 'block', marginTop: 10 }}>{error}</Typography.Text>}
 
       <Space style={{ marginTop: 18, width: '100%', justifyContent: 'flex-end' }}>
-        {onPrint && (
+        {onPrint && printEnabled && (
           <Button icon={<PrinterOutlined />} loading={busy === 'print'} onClick={handlePrint}>
             {t('ui.report.print', 'Print')}
           </Button>

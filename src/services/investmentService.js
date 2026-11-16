@@ -1,5 +1,6 @@
 import axiosInstance from './axios';
 import { printPdfFromUrl } from '../utils/printPdf';
+import { sharePdfBlob } from '../utils/reportDownload';
 
 // ─────────────────────────────────────────
 // VENDOR METHODS
@@ -144,5 +145,11 @@ export const investmentService = {
     });
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
     printPdfFromUrl(url);
+  },
+
+  /** Fetch the purchase-invoice PDF and open the share sheet (WhatsApp / email), else download it. */
+  shareInvoicePdf: async (investmentId, invoiceNumber) => {
+    const response = await axiosInstance.get(`/investments/${investmentId}/invoice/pdf`, { responseType: 'blob' });
+    await sharePdfBlob(new Blob([response.data], { type: 'application/pdf' }), `${invoiceNumber || `purchase-invoice-${investmentId}`}.pdf`);
   },
 };

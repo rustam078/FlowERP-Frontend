@@ -44,6 +44,7 @@ const CompanyInvoiceSettings = () => {
         COMPANY_ADDRESS: settings.COMPANY_ADDRESS ?? '',
         DEFAULT_GST_PERCENT: settings.DEFAULT_GST_PERCENT ?? '0',
         SALES_GST_ENABLED: String(settings.SALES_GST_ENABLED).toLowerCase() === 'true' ? 'true' : 'false',
+        PRINT_ENABLED: String(settings.PRINT_ENABLED).toLowerCase() === 'true' ? 'true' : 'false',
         CURRENCY_SYMBOL: settings.CURRENCY_SYMBOL ?? '₹',
       });
     }
@@ -110,6 +111,24 @@ const CompanyInvoiceSettings = () => {
           </Grid>
         ))}
       </Grid>
+
+      <Divider sx={{ my: 3 }} />
+
+      {/* Printing: every Print button/icon in the app is hidden until this is turned on. */}
+      <Box sx={{ mb: 1 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={String(form.PRINT_ENABLED).toLowerCase() === 'true'}
+              onChange={(e) => { setForm((f) => ({ ...f, PRINT_ENABLED: e.target.checked ? 'true' : 'false' })); setSaved(false); }}
+            />
+          }
+          label={<Typography sx={{ fontWeight: 600 }}>{t('settings.company.printEnabled', 'Show print options')}</Typography>}
+        />
+        <Typography variant="body2" color="text.secondary">
+          {t('settings.company.printEnabledHelp', 'When ON, Print buttons appear on invoices, reports and pay-slips. When OFF, they are hidden (Download and Send still work).')}
+        </Typography>
+      </Box>
 
       <Divider sx={{ my: 3 }} />
 

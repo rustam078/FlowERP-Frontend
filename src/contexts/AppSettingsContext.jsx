@@ -13,6 +13,7 @@ const DEFAULTS = {
   COMPANY_GSTIN: '',
   DEFAULT_GST_PERCENT: '0',
   SALES_GST_ENABLED: 'false',
+  PRINT_ENABLED: 'false', // print buttons hidden until turned on in Settings
   CURRENCY_SYMBOL: '₹',
   MENU_ORDER: '["dashboard","investment","employees","production","products","sales","inventory","revenue","settings"]',
   ROLE_PERMISSIONS: '{}',
@@ -79,6 +80,7 @@ export const AppSettingsProvider = ({ children }) => {
       gstPercent,
       gstEnabled,
       currencySymbol,
+      printEnabled: String(map.PRINT_ENABLED).toLowerCase() === 'true',
       // Convenience formatter bound to the current symbol.
       money: (v, opts) => formatMoney(v, opts),
     };

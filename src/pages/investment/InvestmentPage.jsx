@@ -41,6 +41,7 @@ import {
   DeleteOutlined,
   DownloadOutlined,
   PrinterOutlined,
+  MailOutlined,
   SearchOutlined,
   ReloadOutlined,
   FilterOutlined,
@@ -279,7 +280,7 @@ const InvestmentPage = () => {
   const [discountPct, setDiscountPct] = useState(null); // entered % when mode = PERCENT
 
   // Default GST % from system settings; auto-applied to new PURCHASE invoices.
-  const { gstPercent } = useAppSettings();
+  const { gstPercent, printEnabled } = useAppSettings();
 
   // In % mode the rupee discount follows the subtotal automatically.
   useEffect(() => {
@@ -1137,16 +1138,36 @@ const InvestmentPage = () => {
                 style={{ color: 'var(--theme-primary)', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               />
             </Tooltip>
-            <Tooltip title={t('investment.tooltip.printInvoice', 'Print Invoice')} placement="top">
+            {printEnabled && (
+              <Tooltip title={t('investment.tooltip.printInvoice', 'Print Invoice')} placement="top">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<PrinterOutlined style={{ fontSize: 17, fontWeight: 700 }} />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    investmentService.printInvoicePdf(record.id).catch((err) =>
+                      notification.error({
+                        message: t('investment.toast.invoicePrintFailed', 'Invoice print failed'),
+                        description: err.response?.data?.message || err.message || t('investment.toast.invoiceDownloadFailedDesc', 'Could not generate the invoice PDF.'),
+                        placement: 'topRight',
+                      })
+                    );
+                  }}
+                  style={{ color: 'var(--theme-primary)', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                />
+              </Tooltip>
+            )}
+            <Tooltip title={t('investment.tooltip.sendInvoice', 'Send Invoice')} placement="top">
               <Button
                 type="text"
                 size="small"
-                icon={<PrinterOutlined style={{ fontSize: 17, fontWeight: 700 }} />}
+                icon={<MailOutlined style={{ fontSize: 17, fontWeight: 700 }} />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  investmentService.printInvoicePdf(record.id).catch((err) =>
+                  investmentService.shareInvoicePdf(record.id, record.invoiceNumber).catch((err) =>
                     notification.error({
-                      message: t('investment.toast.invoicePrintFailed', 'Invoice print failed'),
+                      message: t('investment.toast.invoiceSendFailed', 'Invoice send failed'),
                       description: err.response?.data?.message || err.message || t('investment.toast.invoiceDownloadFailedDesc', 'Could not generate the invoice PDF.'),
                       placement: 'topRight',
                     })

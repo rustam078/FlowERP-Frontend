@@ -3,10 +3,12 @@ import { Box, Card, CardContent, Chip, IconButton, Table, TableBody, TableCell, 
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import dayjs from 'dayjs';
 import { getCurrencySymbol } from '../../../utils/currency';
 import { modeLabel } from '../../../utils/payment';
 import { useT } from '../../../contexts/LanguageContext';
+import { useAppSettings } from '../../../contexts/AppSettingsContext';
 
 const STATUS_COLOR = { PAID: 'success', DUE: 'warning', PENDING: 'warning', PARTIALLY_PAID: 'info', FAILED: 'error', REFUNDED: 'default' };
 
@@ -16,8 +18,9 @@ const fmtDate = (v) => {
   return v && d.isValid() ? d.format('DD-MMM-YYYY') : '-';
 };
 
-const SalesTable = ({ rows, loading, error, page, rowsPerPage, count, onPageChange, onRowsPerPageChange, onDownload, onPrint, onRowClick }) => {
+const SalesTable = ({ rows, loading, error, page, rowsPerPage, count, onPageChange, onRowsPerPageChange, onDownload, onPrint, onSend, onRowClick }) => {
   const t = useT();
+  const { printEnabled } = useAppSettings();
   // Translate a payment status code to its label, falling back to the humanised code.
   const statusLabel = (code) => (code ? t(`sales.status.${code}`, code.replace(/_/g, ' ')) : '-');
   // Server-side paging: `rows` is only the current page, so fill up to the page size by its length.
@@ -116,9 +119,16 @@ const SalesTable = ({ rows, loading, error, page, rowsPerPage, count, onPageChan
                                 <FileDownloadOutlinedIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title={t('sales.printInvoice', 'Print invoice')}>
-                              <IconButton size="small" color="primary" onClick={() => onPrint(saleId)}>
-                                <PrintOutlinedIcon fontSize="small" />
+                            {printEnabled && (
+                              <Tooltip title={t('sales.printInvoice', 'Print invoice')}>
+                                <IconButton size="small" color="primary" onClick={() => onPrint(saleId)}>
+                                  <PrintOutlinedIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            <Tooltip title={t('sales.sendInvoice', 'Send invoice')}>
+                              <IconButton size="small" color="primary" onClick={() => onSend(saleId, sale.invoiceNo)}>
+                                <MailOutlineIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                           </Stack>

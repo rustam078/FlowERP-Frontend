@@ -1,5 +1,5 @@
 import axiosInstance from '../../../services/axios';
-import { downloadReport, printReport, shareReport, periodToken } from '../../../utils/reportDownload';
+import { downloadReport, printReport, shareReport, sharePdfBlob, periodToken } from '../../../utils/reportDownload';
 import { printPdfFromUrl } from '../../../utils/printPdf';
 
 const salesService = {
@@ -98,6 +98,12 @@ const salesService = {
     });
     const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
     printPdfFromUrl(url);
+  },
+
+  /** Fetch the same invoice PDF and open the share sheet (WhatsApp / email), else download it. */
+  shareInvoicePdf: async (saleId, invoiceNo) => {
+    const response = await axiosInstance.get(`/sales/${saleId}/invoice/pdf`, { responseType: 'blob' });
+    await sharePdfBlob(new Blob([response.data], { type: 'application/pdf' }), `${invoiceNo || `invoice-${saleId}`}.pdf`);
   },
 
   /** Date-range sales report (PDF or Excel). GET /api/sales/report/{format} */

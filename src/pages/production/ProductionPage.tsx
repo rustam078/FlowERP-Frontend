@@ -58,12 +58,14 @@ import HeadingInfo from '../../components/common/HeadingInfo';
 import { getCurrencySymbol } from '../../utils/currency';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useT } from '../../contexts/LanguageContext';
+import { useAppSettings } from '../../contexts/AppSettingsContext';
 
 const ProductionPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const t = useT();
+  const { printEnabled } = useAppSettings();
   const [filterForm] = Form.useForm();
 
   // Filter popover visibility
@@ -395,7 +397,7 @@ const ProductionPage: React.FC = () => {
             items: [
               { key: 'pdf', icon: <FilePdfOutlined style={{ color: '#DC2626' }} />, label: t('production.downloadPdf', 'Download PDF'), onClick: () => handleDownloadPdf(record) },
               { key: 'excel', icon: <FileExcelOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('production.downloadExcel', 'Download Excel'), onClick: () => handleDownloadExcel(record) },
-              { key: 'print', icon: <PrinterOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('production.print', 'Print'), onClick: () => handlePrintPdf(record) },
+              ...(printEnabled ? [{ key: 'print', icon: <PrinterOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('production.print', 'Print'), onClick: () => handlePrintPdf(record) }] : []),
               { key: 'send', icon: <MailOutlined style={{ color: 'var(--theme-primary)' }} />, label: t('production.send', 'Send'), onClick: () => handleSendPdf(record) },
               ...(can('production', 'delete') ? [
                 { type: 'divider' as const },

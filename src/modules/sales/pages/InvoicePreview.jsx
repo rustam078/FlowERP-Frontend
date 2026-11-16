@@ -8,9 +8,11 @@ import jsPDF from 'jspdf';
 import salesService from '../services/salesService';
 import InvoiceLayout from '../components/InvoiceLayout';
 import { useT } from '../../../contexts/LanguageContext';
+import { useAppSettings } from '../../../contexts/AppSettingsContext';
 
 const InvoicePreview = () => {
   const t = useT();
+  const { printEnabled } = useAppSettings();
   const navigate = useNavigate();
   const { saleId } = useParams();
   const invoiceRef = useRef(null);
@@ -78,9 +80,11 @@ const InvoicePreview = () => {
           {t('common.back', 'Back')}
         </Button>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Button variant="outlined" onClick={() => window.print()}>
-            {t('common.print', 'Print')}
-          </Button>
+          {printEnabled && (
+            <Button variant="outlined" onClick={() => window.print()}>
+              {t('common.print', 'Print')}
+            </Button>
+          )}
           <Button variant="contained" onClick={handleDownloadPdf}>
             {t('sales.downloadPdf', 'Download PDF')}
           </Button>

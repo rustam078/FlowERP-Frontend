@@ -72,6 +72,7 @@ export default {
     // Action tooltips
     'investment.tooltip.downloadInvoice': 'Download Invoice PDF',
     'investment.tooltip.printInvoice': 'Print Invoice',
+    'investment.tooltip.sendInvoice': 'Send Invoice',
     'investment.tooltip.editVendor': 'Edit Vendor',
     'investment.tooltip.deactivate': 'Deactivate',
     'investment.tooltip.activate': 'Activate',
@@ -260,6 +261,7 @@ export default {
     'investment.toast.invoiceDownloadFailed': 'Invoice download failed',
     'investment.toast.invoiceDownloadFailedDesc': 'Could not generate the invoice PDF.',
     'investment.toast.invoicePrintFailed': 'Invoice print failed',
+    'investment.toast.invoiceSendFailed': 'Invoice send failed',
     'investment.toast.mrpRequired': 'Selling price (MRP) is required for every product item.',
     'investment.toast.checkDetails': 'Check details',
     'investment.toast.vendorAdded': 'Vendor added',
@@ -340,6 +342,7 @@ export default {
     // Action tooltips
     'investment.tooltip.downloadInvoice': 'चालान पीडीएफ डाउनलोड करें',
     'investment.tooltip.printInvoice': 'चालान प्रिंट करें',
+    'investment.tooltip.sendInvoice': 'चालान भेजें',
     'investment.tooltip.editVendor': 'विक्रेता संपादित करें',
     'investment.tooltip.deactivate': 'निष्क्रिय करें',
     'investment.tooltip.activate': 'सक्रिय करें',
@@ -528,6 +531,7 @@ export default {
     'investment.toast.invoiceDownloadFailed': 'चालान डाउनलोड विफल',
     'investment.toast.invoiceDownloadFailedDesc': 'चालान पीडीएफ उत्पन्न नहीं किया जा सका।',
     'investment.toast.invoicePrintFailed': 'चालान प्रिंट विफल',
+    'investment.toast.invoiceSendFailed': 'चालान भेजना विफल',
     'investment.toast.mrpRequired': 'प्रत्येक उत्पाद आइटम के लिए विक्रय मूल्य (एमआरपी) आवश्यक है।',
     'investment.toast.checkDetails': 'विवरण जांचें',
     'investment.toast.vendorAdded': 'विक्रेता जोड़ा गया',

@@ -5,10 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { employeeService } from '../../services/employee.service';
 import { useT } from '../../contexts/LanguageContext';
+import { useAppSettings } from '../../contexts/AppSettingsContext';
 import AttendanceCalendar from './AttendanceCalendar';
 import { EmployeeProductionHistoryTable } from './EmployeeProductionHistoryTable';
 import SettlePaymentModal from './SettlePaymentModal';
 import { printPdfFromUrl } from '../../utils/printPdf';
+import { sharePdfBlob } from '../../utils/reportDownload';
 
 const { RangePicker } = DatePicker;
 
@@ -23,14 +25,6 @@ const saveBlob = (blob: Blob, name: string) => {
   URL.revokeObjectURL(url);
 };
 const printBlob = (blob: Blob) => printPdfFromUrl(URL.createObjectURL(blob));
-const shareBlob = async (blob: Blob, name: string) => {
-  const file = new File([blob], name, { type: 'application/pdf' });
-  const nav: any = navigator;
-  if (nav.canShare && nav.canShare({ files: [file] })) {
-    try { await nav.share({ files: [file], title: name }); return; } catch { /* user cancelled */ }
-  }
-  saveBlob(blob, name); // fallback: download so it can be attached to WhatsApp/email
-};
 
 const cardStyle: React.CSSProperties = {
   borderRadius: 12,
@@ -60,6 +54,7 @@ interface PayrollCardProps {
 
 const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, toDate, productionHistory = [], activeTab, onTabChange, leaveSignal }) => {
   const t = useT();
+  const { printEnabled } = useAppSettings();
   const [internalTab, setInternalTab] = useState<string | undefined>(undefined);
   const setTab = onTabChange ?? setInternalTab;
   const qc = useQueryClient();
@@ -116,7 +111,7 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
       const blob = await fetch();
       if (kind === 'download') saveBlob(blob, name);
       else if (kind === 'print') printBlob(blob);
-      else await shareBlob(blob, name);
+      else await sharePdfBlob(blob, name);
     } catch {
       notification.error({ message: t('employees.payroll.payslipFailed', 'Could not generate pay-slip'), placement: 'topRight' });
     }
@@ -203,7 +198,7 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
         <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           {(r.status || r.status === null) && payButton(r)}
           <Tooltip title={t('employees.payroll.download', 'Download')}><Button size="small" type="text" icon={<DownloadOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'download')} /></Tooltip>
-          <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'print')} /></Tooltip>
+          {printEnabled && <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'print')} /></Tooltip>}
           <Tooltip title={t('employees.payroll.send', 'Send')}><Button size="small" type="text" icon={<MailOutlined />} onClick={() => runSlip(() => employeeService.payslipByMonth(employeeId, r.period), `payslip-${r.monthLabel}.pdf`, 'send')} /></Tooltip>
         </div>
       ),
@@ -301,7 +296,7 @@ const PayrollAccountCard: React.FC<PayrollCardProps> = ({ employeeId, fromDate, 
         return (
           <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Tooltip title={t('employees.payroll.download', 'Download')}><Button size="small" type="text" icon={<DownloadOutlined />} onClick={() => runSlip(fetch, name, 'download')} /></Tooltip>
-            <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(fetch, name, 'print')} /></Tooltip>
+            {printEnabled && <Tooltip title={t('employees.payroll.print', 'Print')}><Button size="small" type="text" icon={<PrinterOutlined />} onClick={() => runSlip(fetch, name, 'print')} /></Tooltip>}
             <Tooltip title={t('employees.payroll.send', 'Send')}><Button size="small" type="text" icon={<MailOutlined />} onClick={() => runSlip(fetch, name, 'send')} /></Tooltip>
           </div>
         );

@@ -210,6 +210,8 @@ export default {
     'sales.noSalesHint': 'Try a different filter or refresh the list.',
     'sales.downloadInvoice': 'Download invoice',
     'sales.printInvoice': 'Print invoice',
+    'sales.sendInvoice': 'Send invoice',
+    'sales.sendInvoiceFailed': 'Could not send the invoice',
     'sales.rows': 'Rows',
 
     // SalesFilter
@@ -489,6 +491,8 @@ export default {
     'sales.noSalesHint': 'कोई अन्य फ़िल्टर आज़माएँ या सूची रीफ़्रेश करें।',
     'sales.downloadInvoice': 'इनवॉइस डाउनलोड करें',
     'sales.printInvoice': 'इनवॉइस प्रिंट करें',
+    'sales.sendInvoice': 'इनवॉइस भेजें',
+    'sales.sendInvoiceFailed': 'इनवॉइस नहीं भेजा जा सका',
     'sales.rows': 'पंक्तियाँ',
 
     // SalesFilter

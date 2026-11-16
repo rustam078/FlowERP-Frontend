@@ -17,6 +17,7 @@ import SalesTable from '../components/SalesTable';
 import HeadingInfo from '../../../components/common/HeadingInfo';
 import { getCurrencySymbol } from '../../../utils/currency';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { notification } from 'antd';
 import { useT } from '../../../contexts/LanguageContext';
 
 dayjs.extend(quarterOfYear);
@@ -244,6 +245,7 @@ const SalesList = () => {
         }}
         onDownload={(saleId) => salesService.downloadInvoicePdf(saleId)}
         onPrint={(saleId) => salesService.printInvoicePdf(saleId)}
+        onSend={(saleId, invoiceNo) => salesService.shareInvoicePdf(saleId, invoiceNo).catch((err) => notification.error({ message: t('sales.sendInvoiceFailed', 'Could not send the invoice'), description: err.message, placement: 'topRight' }))}
         onRowClick={(saleId) => navigate(`/sales/${saleId}`)}
       />
     </Box>

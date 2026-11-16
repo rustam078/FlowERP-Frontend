@@ -85,7 +85,12 @@ export async function shareReport(path, params, fallbackName) {
     throw await toReadableError(err);
   }
   const name = filenameFromHeaders(response.headers, fallbackName);
-  const blob = new Blob([response.data], { type: 'application/pdf' });
+  await sharePdfBlob(new Blob([response.data], { type: 'application/pdf' }), name);
+}
+
+// Open the device share sheet (WhatsApp / email / …) for a PDF; falls back to a download when
+// the browser can't share files. Shared by every "Send" action (pay-slip, invoices, reports).
+export async function sharePdfBlob(blob, name) {
   const file = new File([blob], name, { type: 'application/pdf' });
   const nav = navigator;
   if (nav.canShare && nav.canShare({ files: [file] })) {
