@@ -14,7 +14,7 @@ const DEFAULTS = {
   DEFAULT_GST_PERCENT: '0',
   SALES_GST_ENABLED: 'false',
   CURRENCY_SYMBOL: '₹',
-  MENU_ORDER: '["dashboard","investment","employees","production","products","sales","inventory","settings"]',
+  MENU_ORDER: '["dashboard","investment","employees","production","products","sales","inventory","revenue","settings"]',
   ROLE_PERMISSIONS: '{}',
   STAFF_DASHBOARD_BOARDS: '["overview","sales","inventory","expenses","employees"]',
 };

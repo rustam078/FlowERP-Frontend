@@ -8,6 +8,7 @@ export default {
   'nav.investment': 'निवेश',
   'nav.employees': 'कर्मचारी',
   'nav.sales': 'बिक्री',
+  'nav.revenue': 'राजस्व',
   'nav.settings': 'सेटिंग्स',
 
   // ── Common ──

@@ -17,6 +17,7 @@ const pathToModule = (pathname) => {
     case 'employees': return 'employees';
     case 'sales':
     case 'print': return 'sales';
+    case 'revenue': return 'revenue';
     case 'settings': return 'settings';
     default: return null;
   }

@@ -20,6 +20,7 @@ import InvestmentPage from '../pages/investment/InvestmentPage';
 import EmployeePage from '../pages/employees/EmployeePage';
 import EmployeeDetailsPage from '../pages/employees/EmployeeDetailsPage';
 import SettingsPage from '../pages/settings/SettingsPage';
+import RevenuePage from '../modules/revenue/pages/RevenuePage';
 import VendorDetailsPage from '../pages/vendors/VendorDetailsPage';
 import SalesDashboard from '../modules/sales/pages/SalesDashboard';
 import CreateSale from '../modules/sales/pages/CreateSale';
@@ -63,6 +64,7 @@ const AppRoutes = () => {
           <Route path="/employees/:employeeId" element={<EmployeeDetailsPage />} />
           {/* Reports module removed — its important reports now live on the Dashboard */}
           <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/revenue" element={<RevenuePage />} />
           <Route path="/settings" element={<SettingsPage />} />
          </Route>
         </Route>

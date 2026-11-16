@@ -7,13 +7,13 @@ import { usePermissions } from '../../hooks/usePermissions';
 const MODULE_LABEL = {
   dashboard: 'Dashboard', production: 'Production', inventory: 'Inventory',
   products: 'Products', investment: 'Investment', employees: 'Employees',
-  sales: 'Sales', settings: 'Settings',
+  sales: 'Sales', revenue: 'Revenue', settings: 'Settings',
 };
 
 const MODULE_PATH = {
   dashboard: '/dashboard', production: '/production', inventory: '/inventory',
   products: '/products', investment: '/investment', employees: '/employees',
-  sales: '/sales/list', settings: '/settings',
+  sales: '/sales/list', revenue: '/revenue', settings: '/settings',
 };
 
 // Shown when the current user's role can't view the module they navigated to.

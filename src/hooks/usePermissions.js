@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 
-// The 8 permission-controlled modules (must match backend module keys and menu keys).
+// The 9 permission-controlled modules (must match backend module keys and menu keys).
 export const MODULES = [
   'dashboard', 'production', 'inventory', 'products',
-  'investment', 'employees', 'sales', 'settings',
+  'investment', 'employees', 'sales', 'revenue', 'settings',
 ];
 
 export const ACTIONS = ['view', 'write', 'delete'];

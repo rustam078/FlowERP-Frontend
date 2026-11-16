@@ -31,6 +31,7 @@ import {
   ListAlt as ListIcon,
   Settings as SettingsIcon,
   AccountBalanceWallet as InvestmentIcon,
+  Paid as RevenueIcon,
 } from '@mui/icons-material';
 
 const DRAWER_WIDTH = 228;
@@ -46,6 +47,7 @@ const MENU_ITEMS = [
   { key: 'products', text: 'Products', path: '/products', icon: <ProductsIcon /> },
   { key: 'sales', text: 'Sales', path: '/sales/list', icon: <SalesIcon /> },
   { key: 'inventory', text: 'Inventory', path: '/inventory', icon: <InventoryIcon /> },
+  { key: 'revenue', text: 'Revenue', path: '/revenue', icon: <RevenueIcon /> },
   { key: 'settings', text: 'Settings', path: '/settings', icon: <SettingsIcon /> },
 ];
 

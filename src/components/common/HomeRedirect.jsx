@@ -5,7 +5,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 const MODULE_PATH = {
   dashboard: '/dashboard', production: '/production', inventory: '/inventory',
   products: '/products', investment: '/investment', employees: '/employees',
-  sales: '/sales/list', settings: '/settings',
+  sales: '/sales/list', revenue: '/revenue', settings: '/settings',
 };
 
 // Landing route: send the user to the first module they can view (dashboard for admins).

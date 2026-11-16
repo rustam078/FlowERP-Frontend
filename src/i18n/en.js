@@ -9,6 +9,7 @@ export default {
   'nav.investment': 'Investment',
   'nav.employees': 'Employees',
   'nav.sales': 'Sales',
+  'nav.revenue': 'Revenue',
   'nav.settings': 'Settings',
 
   // ── Common actions / labels (reuse everywhere) ──

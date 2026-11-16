@@ -856,7 +856,6 @@ const CreateSale = () => {
                       <Typography sx={{ color: 'var(--theme-primary)', fontSize: '0.9rem', fontWeight: 600 }}>{t('sales.previousDue', 'Previous due')}</Typography>
                       {canSettleDue ? (
                         // Clickable: settle the previous due on its own, without adding any product.
-                        <Tooltip title={t('sales.settle.clickHint', 'Click to settle the previous due')}>
                           <Box
                             component="button" type="button" onClick={() => setSettleOpen(true)}
                             sx={{
@@ -870,12 +869,10 @@ const CreateSale = () => {
                           >
                             {getCurrencySymbol()}{previousDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                           </Box>
-                        </Tooltip>
                       ) : (
                         <Typography sx={{ fontWeight: 700, color: 'var(--theme-primary)' }}>{getCurrencySymbol()}{previousDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Typography>
                       )}
                     </Box>
-                    <Tooltip title={t('sales.clickReceiveFull', 'Click to receive the full amount (clear all)')}>
                       <Box
                         onClick={() => setReceivedText(String(grandOwed))}
                         sx={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer', borderRadius: 1, px: 0.5, '&:hover': { bgcolor: '#F1F5F9' } }}
@@ -883,7 +880,6 @@ const CreateSale = () => {
                         <Typography sx={{ color: '#0F172A', fontSize: '0.95rem', fontWeight: 800 }}>{t('sales.totalPayableInclDue', 'Total payable (incl. due)')}</Typography>
                         <Typography sx={{ fontWeight: 800, color: '#0F172A', textDecoration: 'underline dotted' }}>{getCurrencySymbol()}{grandOwed.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Typography>
                       </Box>
-                    </Tooltip>
                   </>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
