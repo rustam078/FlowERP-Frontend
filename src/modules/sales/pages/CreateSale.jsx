@@ -47,6 +47,10 @@ import ScanBar from '../../qr/components/ScanBar';
 import { mergeScannedUnit } from '../../qr/scanCart';
 import { ProductThumb } from '../../../components/common/ProductLabel';
 import PaymentConfirmDialog from '../../../components/common/PaymentConfirmDialog';
+import PaymentModeFields from '../components/PaymentModeFields';
+import SettleDueDrawer from '../components/SettleDueDrawer';
+import BatchPickerDialog, { hasMixedPrices } from '../components/BatchPickerDialog';
+import { keyframes } from '@mui/system';
 import { getCurrencySymbol } from '../../../utils/currency';
 import { useGstConfig } from '../../../contexts/AppSettingsContext';
 import { usePermissions } from '../../../hooks/usePermissions';
@@ -77,7 +81,15 @@ const fifoPricing = (batches, quantity) => {
   return { gross, cost, avgPrice: qty > 0 ? gross / qty : 0, breakdown };
 };
 
-// Per-line money for one cart row: scanned lines use their frozen price, typed lines use FIFO.
+// Soft theme-coloured ring that tells the cashier the previous due can be clicked.
+const duePulse = keyframes`
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--theme-primary) 45%, transparent); }
+  70% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--theme-primary) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--theme-primary) 0%, transparent); }
+`;
+
+// Per-line money for one cart row: scanned lines use their frozen price, typed lines use FIFO
+// (a chosen-batch line carries just that batch, so the same FIFO walk prices it).
 const lineDerived = (item) => {
   const qty = Number(item.quantity) || 0;
   const scanned = Boolean(item.serials && item.serials.length);
@@ -118,6 +130,10 @@ const CreateSale = () => {
   const [discountMode, setDiscountMode] = useState('PERCENT'); // single field toggles ₹ / % (auto-converts)
   const [previousDue, setPreviousDue] = useState(0); // this customer's outstanding from past sales
   const [receivedText, setReceivedText] = useState('0'); // amount received now (text so no arrows/scroll)
+  const [settleOpen, setSettleOpen] = useState(false); // settle previous due without a new sale
+  // Batch choice for products whose batches have different prices (lineIndex null = new line).
+  const [batchPicker, setBatchPicker] = useState({ open: false, product: null, batches: [], lineIndex: null });
+  const [productAdding, setProductAdding] = useState(false);
 
   const anyProductSelected = formValues.items.length > 0;
   const hasValidationIssues = useMemo(() => {
@@ -198,6 +214,8 @@ const CreateSale = () => {
   const grandOwed = payable + previousDue;
   const amountReceived = Math.min(Math.max(0, Number(receivedText) || 0), grandOwed);
   const remainingDue = Math.max(0, grandOwed - amountReceived);
+  // An existing customer with dues can settle them on their own (no product needed).
+  const canSettleDue = previousDue > 0 && can('sales', 'write') && /^\d{10}$/.test(formValues.customerMobile.trim());
 
   // Fetch the customer's previous outstanding once a full mobile is entered/selected.
   useEffect(() => {
@@ -321,8 +339,10 @@ const CreateSale = () => {
           quantity: Number(item.quantity),
           // Scanned lines carry their frozen price; typed lines are priced by the backend (FIFO).
           sellingPrice: scanned ? Number(item.sellingPrice) : undefined,
-          batchNumber: item.batchNumber || undefined,
+          batchNumber: scanned ? item.batchNumber : undefined,
           serials: scanned ? item.serials : undefined,
+          // Chosen batch (products with different batch prices): stock is drawn only from it.
+          batchId: !scanned && item.batchId ? item.batchId : undefined,
         };
       }),
     };
@@ -409,30 +429,72 @@ const CreateSale = () => {
     setToast({ open: true, message: `${t('sales.toast.added', 'Added')} ${unit.serial}`, severity: 'success' });
   };
 
-  // Load a product's FIFO batches so the typed line can price itself; also sets the stock cap.
-  const loadSaleBatches = async (productId) => {
+  const isScannedLine = (it) => Boolean(it.serials && it.serials.length);
+  // Batches already used by chosen-batch lines of a product (they can't be picked twice).
+  const takenBatchIds = (productId, exceptIndex = null) => formValues.items
+    .filter((it, idx) => idx !== exceptIndex && it.productId === productId && it.batchId)
+    .map((it) => it.batchId);
+
+  // A typed line priced by FIFO across all of the product's batches (same-price products).
+  const addFifoLine = (product, batches) => {
+    const totalAvailable = batches.reduce((s, b) => s + (Number(b.quantityAvailable) || 0), 0);
+    setFormValues((prev) => ({
+      ...prev,
+      items: [...prev.items, {
+        productId: product.productId,
+        productName: product.productName || product.name,
+        quantity: 1,
+        cost: Number(product?.averageCost) || 0,
+        saleBatches: batches,
+        quantityAvailable: totalAvailable,
+      }],
+    }));
+  };
+
+  // Fields of a line drawn only from one chosen batch (its price, stock cap and cost).
+  const batchLineFields = (batch) => ({
+    batchId: batch.batchId,
+    batchNumber: batch.batchNumber,
+    saleBatches: [batch],
+    quantityAvailable: Number(batch.quantityAvailable) || 0,
+    cost: Number(batch.unitCost) || 0,
+  });
+
+  // Picked from the batch dialog: add a new chosen-batch line, or switch an existing line's batch.
+  const handleBatchSelected = (batch) => {
+    const { product, lineIndex } = batchPicker;
+    setBatchPicker({ open: false, product: null, batches: [], lineIndex: null });
+    if (lineIndex != null) {
+      const line = formValues.items[lineIndex];
+      const qty = Math.min(Math.max(1, Number(line.quantity) || 1), Number(batch.quantityAvailable) || 0);
+      updateItem(lineIndex, { ...batchLineFields(batch), quantity: qty });
+      return;
+    }
+    setFormValues((prev) => ({
+      ...prev,
+      items: [...prev.items, {
+        productId: product.productId, productName: product.productName || product.name, quantity: 1, ...batchLineFields(batch),
+      }],
+    }));
+  };
+
+  // Re-open the batch dialog for an existing chosen-batch line (to switch batch).
+  const handleChangeBatch = async (index) => {
+    const line = formValues.items[index];
     try {
-      const batches = await productService.getSaleBatches(productId);
-      const totalAvailable = batches.reduce((s, b) => s + (Number(b.quantityAvailable) || 0), 0);
-      setFormValues((prev) => ({
-        ...prev,
-        items: prev.items.map((it) => (
-          it.productId === productId && !(it.serials && it.serials.length)
-            ? { ...it, saleBatches: batches, quantityAvailable: totalAvailable }
-            : it
-        )),
-      }));
+      const batches = await productService.getSaleBatches(line.productId);
+      setBatchPicker({ open: true, product: { productId: line.productId, productName: line.productName }, batches, lineIndex: index });
     } catch (err) {
       setToast({ open: true, message: err.message || t('sales.toast.unableLoadBatchPrices', 'Unable to load batch prices'), severity: 'error' });
     }
   };
 
-  // Add a product from the top search: append a new line (FIFO-priced), or if it is already
-  // in the cart (typed line), just bump its quantity (respecting stock).
-  const handleAddProduct = (product) => {
+  // Add a product from the top search. Same-price products keep FIFO (an existing FIFO line just
+  // gets +1); products whose batches differ in price ask which batch to sell from.
+  const handleAddProduct = async (product) => {
     if (!product) return;
     const existingIndex = formValues.items.findIndex(
-      (it) => it.productId === product.productId && !(it.serials && it.serials.length)
+      (it) => it.productId === product.productId && !isScannedLine(it) && !it.batchId
     );
     if (existingIndex !== -1) {
       const it = formValues.items[existingIndex];
@@ -440,21 +502,37 @@ const CreateSale = () => {
       updateItem(existingIndex, { quantity: Math.min((Number(it.quantity) || 0) + 1, max) });
       return;
     }
-    setFormValues((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          productId: product.productId,
-          productName: product.productName || product.name,
-          quantityAvailable: product?.currentStock ?? product?.quantityAvailable ?? null,
-          quantity: 1,
-          cost: Number(product?.averageCost) || 0,
-          saleBatches: null, // loading — FIFO price appears once batches arrive
-        },
-      ],
-    }));
-    loadSaleBatches(product.productId);
+    setProductAdding(true);
+    try {
+      const batches = await productService.getSaleBatches(product.productId);
+      if (!batches.length) {
+        setToast({ open: true, message: `${product.productName || product.name}: ${t('sales.batch.outOfStock', 'out of stock')}`, severity: 'error' });
+      } else if (hasMixedPrices(batches)) {
+        if (batches.every((b) => takenBatchIds(product.productId).includes(b.batchId))) {
+          setToast({ open: true, message: t('sales.batch.allAdded', 'Every batch of this product is already in the cart'), severity: 'error' });
+        } else {
+          setBatchPicker({ open: true, product, batches, lineIndex: null });
+        }
+      } else {
+        addFifoLine(product, batches);
+      }
+    } catch (err) {
+      setToast({ open: true, message: err.message || t('sales.toast.unableLoadBatchPrices', 'Unable to load batch prices'), severity: 'error' });
+    } finally {
+      setProductAdding(false);
+    }
+  };
+
+  // Due settled from the drawer: refresh this form's previous due straight away.
+  const handleDueSettled = (result) => {
+    const newDue = Math.max(0, Number(result?.remainingDue) || 0);
+    setPreviousDue(newDue);
+    setReceivedText((prev) => ((Number(prev) || 0) > payable + newDue ? String(payable + newDue) : prev));
+    setSettleOpen(false);
+    setToast({
+      open: true, severity: 'success',
+      message: `${t('sales.settle.success', 'Due settled')}: ${getCurrencySymbol()}${Number(result?.amountSettled || 0).toLocaleString('en-IN')}`,
+    });
   };
 
   return (
@@ -516,8 +594,10 @@ const CreateSale = () => {
               <ScanBar onUnit={handleScannedUnit} onError={(m) => setToast({ open: true, message: m, severity: 'error' })} />
 
               <Autocomplete
-                options={productOptions.filter((p) => !formValues.items.some((it) => it.productId === p.productId && !(it.serials && it.serials.length)))}
-                loading={productLoading}
+                // Hide a product once it has a FIFO line; chosen-batch products stay listed so another batch can be added.
+                options={productOptions.filter((p) => !formValues.items.some((it) => it.productId === p.productId && !isScannedLine(it) && !it.batchId))}
+                loading={productLoading || productAdding}
+                disabled={productAdding}
                 value={null}
                 blurOnSelect
                 clearOnBlur
@@ -549,7 +629,7 @@ const CreateSale = () => {
                     InputProps={{
                       ...params.InputProps,
                       startAdornment: <AddCircleOutlineIcon sx={{ color: 'var(--theme-primary)', ml: 0.5, mr: 0.5 }} fontSize="small" />,
-                      endAdornment: (<>{productLoading ? <CircularProgress color="inherit" size={16} /> : null}{params.InputProps.endAdornment}</>),
+                      endAdornment: (<>{(productLoading || productAdding) ? <CircularProgress color="inherit" size={16} /> : null}{params.InputProps.endAdornment}</>),
                     }}
                     sx={{ bgcolor: '#fff' }}
                   />
@@ -605,9 +685,20 @@ const CreateSale = () => {
                                 />
                                 <Box sx={{ minWidth: 0 }}>
                                   <Typography sx={{ fontWeight: 600, fontSize: '0.86rem', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 230 }}>{item.productName}</Typography>
-                                  <Typography variant="caption" sx={{ color: exceeded ? '#DC2626' : '#94A3B8' }}>
-                                    {scanned ? `${item.batchNumber} · ${item.serials.length} ${t('sales.scanned', 'scanned')}` : (item.quantityAvailable != null ? `${t('sales.inStock', 'In stock')}: ${item.quantityAvailable}` : `${t('sales.stock', 'Stock')}: —`)}
-                                  </Typography>
+                                  <Stack direction="row" spacing={0.75} alignItems="center">
+                                    <Typography variant="caption" sx={{ color: exceeded ? '#DC2626' : '#94A3B8' }}>
+                                      {scanned ? `${item.batchNumber} · ${item.serials.length} ${t('sales.scanned', 'scanned')}` : (item.quantityAvailable != null ? `${t('sales.inStock', 'In stock')}: ${item.quantityAvailable}` : `${t('sales.stock', 'Stock')}: —`)}
+                                    </Typography>
+                                    {!scanned && item.batchId ? (
+                                      <Tooltip title={t('sales.batch.change', 'Change batch')}>
+                                        <Chip
+                                          size="small" clickable onClick={() => handleChangeBatch(index)}
+                                          label={`${t('sales.batch.label', 'Batch')} ${item.batchNumber}`}
+                                          sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, color: 'var(--theme-primary)', bgcolor: 'color-mix(in srgb, var(--theme-primary) 10%, white)' }}
+                                        />
+                                      </Tooltip>
+                                    ) : null}
+                                  </Stack>
                                 </Box>
                               </Stack>
                             </TableCell>
@@ -761,9 +852,28 @@ const CreateSale = () => {
                 {/* Credit / udhaari: previous dues + amount received now; the rest stays due. */}
                 {previousDue > 0 && (
                   <>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Typography sx={{ color: 'var(--theme-primary)', fontSize: '0.9rem', fontWeight: 600 }}>{t('sales.previousDue', 'Previous due')}</Typography>
-                      <Typography sx={{ fontWeight: 700, color: 'var(--theme-primary)' }}>{getCurrencySymbol()}{previousDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Typography>
+                      {canSettleDue ? (
+                        // Clickable: settle the previous due on its own, without adding any product.
+                        <Tooltip title={t('sales.settle.clickHint', 'Click to settle the previous due')}>
+                          <Box
+                            component="button" type="button" onClick={() => setSettleOpen(true)}
+                            sx={{
+                              border: 'none', borderRadius: 1, px: 1, py: 0.25,
+                              bgcolor: 'color-mix(in srgb, var(--theme-primary) 8%, white)', color: 'var(--theme-primary)',
+                              font: 'inherit', fontWeight: 800, cursor: 'pointer',
+                              animation: `${duePulse} 2.2s ease-out infinite`,
+                              '&:hover, &:focus-visible': { bgcolor: 'color-mix(in srgb, var(--theme-primary) 16%, white)', outline: 'none' },
+                              '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                            }}
+                          >
+                            {getCurrencySymbol()}{previousDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          </Box>
+                        </Tooltip>
+                      ) : (
+                        <Typography sx={{ fontWeight: 700, color: 'var(--theme-primary)' }}>{getCurrencySymbol()}{previousDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</Typography>
+                      )}
                     </Box>
                     <Tooltip title={t('sales.clickReceiveFull', 'Click to receive the full amount (clear all)')}>
                       <Box
@@ -809,16 +919,13 @@ const CreateSale = () => {
 
               <Divider />
 
-              <TextField label={t('sales.paymentMode', 'Payment Mode')} name="paymentMode" select value={formValues.paymentMode} onChange={handleInputChange} fullWidth size="small" SelectProps={{ native: true }} disabled={!anyProductSelected}>
-                <option value="CASH">{t('sales.cash', 'Cash')}</option>
-                <option value="UPI">{t('sales.upi', 'UPI')}</option>
-                <option value="CREDIT_CARD">{t('sales.creditCard', 'Credit Card')}</option>
-                <option value="DEBIT_CARD">{t('sales.debitCard', 'Debit Card')}</option>
-                <option value="NET_BANKING">{t('sales.netBanking', 'Net Banking')}</option>
-              </TextField>
-              {formValues.paymentMode !== 'CASH' ? (
-                <TextField label={t('sales.paymentProvider', 'Payment Provider')} name="paymentProvider" value={formValues.paymentProvider} onChange={handleInputChange} fullWidth size="small" disabled={!anyProductSelected} />
-              ) : null}
+              {/* Same payment-mode fields as the due settlement drawer (shared component). */}
+              <PaymentModeFields
+                mode={formValues.paymentMode} provider={formValues.paymentProvider}
+                onModeChange={(v) => setFormValues((prev) => ({ ...prev, paymentMode: v }))}
+                onProviderChange={(v) => setFormValues((prev) => ({ ...prev, paymentProvider: v }))}
+                disabled={!anyProductSelected}
+              />
 
               {can('sales', 'write') && (
                 <Button variant="contained" fullWidth startIcon={<CheckCircleOutlineIcon />} onClick={handleCompleteClick} disabled={createSaleMutation.isLoading || hasValidationIssues} sx={{ py: 1.2, fontWeight: 700, fontSize: '0.95rem', boxShadow: '0 8px 20px -6px rgba(37,99,235,0.5)' }}>
@@ -952,6 +1059,25 @@ const CreateSale = () => {
         ]}
         dueAmount={remainingDue}
         dueText={`${getCurrencySymbol()}${remainingDue.toLocaleString('en-IN')}`}
+      />
+
+      <SettleDueDrawer
+        open={settleOpen}
+        onClose={() => setSettleOpen(false)}
+        customerName={formValues.customerName}
+        customerMobile={formValues.customerMobile.trim()}
+        outstanding={previousDue}
+        onSettled={handleDueSettled}
+      />
+
+      <BatchPickerDialog
+        open={batchPicker.open}
+        productName={batchPicker.product?.productName || batchPicker.product?.name || ''}
+        batches={batchPicker.batches}
+        takenBatchIds={batchPicker.product ? takenBatchIds(batchPicker.product.productId, batchPicker.lineIndex) : []}
+        currentBatchId={batchPicker.lineIndex != null ? formValues.items[batchPicker.lineIndex]?.batchId : null}
+        onSelect={handleBatchSelected}
+        onCancel={() => setBatchPicker({ open: false, product: null, batches: [], lineIndex: null })}
       />
 
       <Box sx={{ position: 'fixed', top: 20, right: 20, zIndex: 1300 }}>

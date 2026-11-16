@@ -50,6 +50,13 @@ const salesService = {
     return response.data;
   },
 
+  // Settle previous dues without a new sale: { customerMobile, amount, paymentMode, requestId }.
+  // requestId makes a repeated submit (double click / retry) safe — the backend records it once.
+  settleCustomerDue: async (payload) => {
+    const response = await axiosInstance.post('/sales/customer/settle-due', payload);
+    return response.data;
+  },
+
   // A customer's recent sales (newest first) for the history tab.
   getCustomerHistory: async (mobile, page = 0, size = 10) => {
     const response = await axiosInstance.get('/sales/customer/history', { params: { mobile, page, size } });
