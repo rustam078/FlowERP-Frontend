@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { message } from 'antd';
 
+// Built app is served by the backend itself, so it uses a relative /api (works from any device / tunnel).
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8080/api' : '/api');
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+  baseURL: API_BASE,
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',

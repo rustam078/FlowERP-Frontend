@@ -1,7 +1,4 @@
-import axiosInstance from './axios';
-
-// Absolute API base for building <img src> URLs (image GET is public on the backend).
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+import axiosInstance, { API_BASE } from './axios';
 
 /**
  * Service to handle product and piece code endpoints.
