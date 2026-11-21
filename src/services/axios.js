@@ -17,13 +17,13 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Session-style RBAC: send the logged-in user's id so the backend can resolve
-    // their role and enforce per-module permissions.
+    // Every API call names the signed-in user and portfolio. The backend trusts only the session
+    // token and refuses the call if these don't match it (so editing localStorage gains nothing).
     try {
-      const rawUser = localStorage.getItem('skr_user');
-      if (rawUser) {
-        const u = JSON.parse(rawUser);
-        if (u && u.id) config.headers['X-User-Id'] = u.id;
+      const u = JSON.parse(localStorage.getItem('skr_user') || 'null');
+      if (u && u.id) {
+        config.params = { ...(config.params || {}), userId: u.id };
+        if (u.portfolioId) config.params.portfolioId = u.portfolioId;
       }
     } catch { /* ignore malformed user */ }
     return config;
@@ -57,7 +57,7 @@ axiosInstance.interceptors.response.use(
       // get a 403 (they pass everything), so if one occurs, surface it to help debugging.
       let role = null;
       try { role = JSON.parse(localStorage.getItem('skr_user') || '{}')?.role; } catch { /* ignore */ }
-      if (role === 'ADMIN') {
+      if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
         try { message.error(serverMessage || 'You do not have permission to do that'); } catch { /* noop */ }
       }
     }

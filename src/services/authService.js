@@ -1,38 +1,44 @@
 import axiosInstance from './axios';
 
-/**
- * Authentication service for managing user sessions.
- */
+// Backend session → the user object kept in AuthContext / localStorage.
+const toUser = (d) => ({
+  id: d.userId,
+  name: d.fullName,
+  email: d.email,
+  role: d.role,
+  portfolioId: d.portfolioId || null, // null = SUPER_ADMIN who hasn't picked a portfolio yet
+  portfolioName: d.portfolioName || null,
+});
+
+const unwrap = (response, fallback) => {
+  const body = response.data;
+  if (body.success && body.data) return body.data;
+  throw new Error(body.message || fallback);
+};
+
+/** Sign in / out and session helpers (server-side session token). */
 export const authService = {
-  /**
-   * Logs in a user with their credentials.
-   * Calls POST /api/auth/login and returns standard session object.
-   * 
-   * @param {string} username - User credentials identifier
-   * @param {string} password - User credentials password
-   * @returns {Promise<{token: string, user: {id: string, name: string, email: string, role: string}}>}
-   */
-  login: async (username, password) => {
-    const response = await axiosInstance.post('/auth/login', { username, password });
-    const responseData = response.data;
-    
-    if (responseData.success && responseData.data) {
-      return {
-        token: responseData.data.token || 'mock_jwt_token_skr_garments_erp',
-        user: {
-          id: responseData.data.userId,
-          name: responseData.data.fullName,
-          email: responseData.data.username,
-          role: responseData.data.role,
-        },
-      };
-    }
-    throw new Error(responseData.message || 'Login failed');
+  /** POST /api/auth/login → { token, user }. */
+  login: async (email, password) => {
+    const data = unwrap(await axiosInstance.post('/auth/login', { email, password }), 'Login failed');
+    return { token: data.token, user: toUser(data) };
   },
 
-  /** Change the logged-in user's password. */
-  changePassword: async (username, currentPassword, newPassword) => {
-    const response = await axiosInstance.post('/auth/change-password', { username, currentPassword, newPassword });
+  /** Ends the session on the server (the token stops working everywhere it was copied). */
+  logout: async () => {
+    await axiosInstance.post('/auth/logout');
+  },
+
+  /** Current session (user + portfolio being worked in). */
+  me: async () => toUser(unwrap(await axiosInstance.get('/auth/me'), 'Session check failed')),
+
+  /** SUPER_ADMIN only: enter another portfolio (null = back to the picker). */
+  switchPortfolio: async (portfolioId) =>
+    toUser(unwrap(await axiosInstance.post('/auth/switch-portfolio', { portfolioId }), 'Could not switch portfolio')),
+
+  /** Change the signed-in user's own password. */
+  changePassword: async (currentPassword, newPassword) => {
+    const response = await axiosInstance.post('/auth/change-password', { currentPassword, newPassword });
     return response.data;
   },
 };

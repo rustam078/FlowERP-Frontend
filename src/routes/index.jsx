@@ -27,6 +27,8 @@ import CreateSale from '../modules/sales/pages/CreateSale';
 import SalesList from '../modules/sales/pages/SalesList';
 import SaleDetails from '../modules/sales/pages/SaleDetails';
 import InvoicePreview from '../modules/sales/pages/InvoicePreview';
+import PortfolioPickerPage from '../pages/portfolios/PortfolioPickerPage';
+import { PortfolioGate, SuperAdminRoute } from '../components/common/PortfolioGate';
 
 const AppRoutes = () => {
   return (
@@ -36,6 +38,11 @@ const AppRoutes = () => {
 
       {/* Protected Enterprise Pages */}
       <Route element={<ProtectedRoute />}>
+        {/* Super admin: pick / manage portfolios (full page, outside the app layout) */}
+        <Route element={<SuperAdminRoute />}>
+          <Route path="/portfolios" element={<PortfolioPickerPage />} />
+        </Route>
+        <Route element={<PortfolioGate />}>
         <Route element={<MainLayout />}>
          <Route element={<ModuleGuard />}>
           {/* Index Route → first module the user can view */}
@@ -67,6 +74,7 @@ const AppRoutes = () => {
           <Route path="/revenue" element={<RevenuePage />} />
           <Route path="/settings" element={<SettingsPage />} />
          </Route>
+        </Route>
         </Route>
       </Route>
 

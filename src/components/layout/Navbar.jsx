@@ -20,8 +20,10 @@ import {
   Button,
   Alert,
   Stack,
+  Chip,
 } from '@mui/material';
 import {
+  SwapHoriz as SwapHorizIcon,
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
   ExitToApp as LogoutIcon,
@@ -56,11 +58,11 @@ const Navbar = ({ onToggleSidebar, sidebarOpen }) => {
   const openChangePassword = () => { handleCloseMenu(); setPw({ current: '', next: '', confirm: '' }); setPwState({ busy: false, error: '', ok: false }); setPwOpen(true); };
 
   const submitChangePassword = async () => {
-    if (pw.next.length < 4) { setPwState({ busy: false, error: t('ui.nav.pwMin', 'New password must be at least 4 characters.'), ok: false }); return; }
+    if (pw.next.length < 8) { setPwState({ busy: false, error: t('ui.nav.pwMin8', 'New password must be at least 8 characters.'), ok: false }); return; }
     if (pw.next !== pw.confirm) { setPwState({ busy: false, error: t('ui.nav.pwMismatch', 'New password and confirm do not match.'), ok: false }); return; }
     setPwState({ busy: true, error: '', ok: false });
     try {
-      await authService.changePassword(user?.email, pw.current, pw.next);
+      await authService.changePassword(pw.current, pw.next);
       setPwState({ busy: false, error: '', ok: true });
       setTimeout(() => setPwOpen(false), 900);
     } catch (e) {
@@ -149,6 +151,18 @@ const Navbar = ({ onToggleSidebar, sidebarOpen }) => {
         </Typography>
 
         <Box sx={{ flexGrow: 1 }} />
+
+        {/* Super admin: which portfolio is open, and a quick way back to the picker. */}
+        {user?.role === 'SUPER_ADMIN' ? (
+          <Tooltip title={t('portfolio.switch', 'Switch portfolio')}>
+            <Chip
+              icon={<SwapHorizIcon />}
+              label={`${t('portfolio.viewing', 'Viewing')}: ${user.portfolioName || '—'}`}
+              onClick={() => navigate('/portfolios')}
+              sx={{ mr: 1, fontWeight: 700, cursor: 'pointer', display: { xs: 'none', sm: 'flex' } }}
+            />
+          </Tooltip>
+        ) : null}
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* Low-stock alerts */}

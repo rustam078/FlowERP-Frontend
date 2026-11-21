@@ -7,8 +7,8 @@ const userService = {
     return Array.isArray(res.data) ? res.data : [];
   },
 
-  async create({ username, password, fullName, role, active }) {
-    const res = await axiosInstance.post('/users', { username, password, fullName, role, active });
+  async create({ email, password, fullName, role, active }) {
+    const res = await axiosInstance.post('/users', { email, password, fullName, role, active });
     return res.data;
   },
 

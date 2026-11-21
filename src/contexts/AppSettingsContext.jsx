@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import settingsService from '../services/settingsService';
+import { useAuth } from './AuthContext';
 import { setCurrencySymbol, formatMoney } from '../utils/currency';
 
 const AppSettingsContext = createContext(null);
@@ -27,9 +28,12 @@ const DEFAULTS = {
  * cache in utils/currency so non-React code can format money identically.
  */
 export const AppSettingsProvider = ({ children }) => {
+  const { user } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['appSettings'],
     queryFn: settingsService.getAll,
+    // Settings belong to a portfolio: load them only once one is selected (signed in / switched).
+    enabled: Boolean(user?.portfolioId),
     // Short stale window + refetch on focus so permission/menu changes made by an admin
     // propagate to an already-open session soon after (login forces an immediate refetch).
     staleTime: 30 * 1000,

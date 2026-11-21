@@ -55,7 +55,7 @@ const DASHBOARD_BOARDS = [
   { value: 'employees', label: 'Employees' },
 ];
 
-const EMPTY_ADD = { username: '', fullName: '', password: '', role: ROLE_STAFF, active: true };
+const EMPTY_ADD = { email: '', fullName: '', password: '', role: ROLE_STAFF, active: true };
 
 // Build a full STAFF matrix (every module present) from a possibly-partial saved object.
 const buildMatrix = (staffPerms) =>
@@ -82,10 +82,10 @@ const UsersRolesSettings = () => {
   const [addForm, setAddForm] = useState(EMPTY_ADD);
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState(null); // { id, username, fullName, role, active }
+  const [editForm, setEditForm] = useState(null); // { id, email, fullName, role, active }
 
   const [pwOpen, setPwOpen] = useState(false);
-  const [pwUser, setPwUser] = useState(null); // { id, username }
+  const [pwUser, setPwUser] = useState(null); // { id, email }
   const [pwValue, setPwValue] = useState('');
   const [showAddPw, setShowAddPw] = useState(false);
   const [showResetPw, setShowResetPw] = useState(false);
@@ -142,25 +142,25 @@ const UsersRolesSettings = () => {
   });
 
   const openEdit = (u) => {
-    setEditForm({ id: u.id, username: u.username, fullName: u.fullName || '', role: u.role || ROLE_STAFF, active: !!u.active });
+    setEditForm({ id: u.id, email: u.email, fullName: u.fullName || '', role: u.role || ROLE_STAFF, active: !!u.active });
     setEditOpen(true);
   };
 
   const openReset = (u) => {
-    setPwUser({ id: u.id, username: u.username });
+    setPwUser({ id: u.id, email: u.email });
     setPwValue('');
     setPwOpen(true);
   };
 
   const canSubmitAdd =
-    addForm.username.trim() && addForm.fullName.trim() && addForm.password.length >= 4;
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addForm.email.trim()) && addForm.fullName.trim() && addForm.password.length >= 8;
   const canSubmitEdit = editForm && editForm.fullName.trim();
-  const canSubmitPw = pwValue.length >= 4;
+  const canSubmitPw = pwValue.length >= 8;
 
   const submitAdd = () => {
     if (!canSubmitAdd) return;
     createMutation.mutate({
-      username: addForm.username.trim(),
+      email: addForm.email.trim(),
       password: addForm.password,
       fullName: addForm.fullName.trim(),
       role: addForm.role,
@@ -272,7 +272,7 @@ const UsersRolesSettings = () => {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 700 }}>{t('settings.users.colUsername', 'Username')}</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>{t('settings.users.colEmail', 'Email')}</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>{t('settings.users.colFullName', 'Full name')}</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>{t('settings.users.colRole', 'Role')}</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>{t('common.status', 'Status')}</TableCell>
@@ -293,7 +293,7 @@ const UsersRolesSettings = () => {
             ) : (
               users.map((u) => (
                 <TableRow key={u.id} hover>
-                  <TableCell>{u.username}</TableCell>
+                  <TableCell>{u.email}</TableCell>
                   <TableCell>{u.fullName}</TableCell>
                   <TableCell>{roleChip(u.role)}</TableCell>
                   <TableCell>{statusChip(u.active)}</TableCell>
@@ -391,11 +391,12 @@ const UsersRolesSettings = () => {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label={t('settings.users.colUsername', 'Username')}
+              type="email"
+              label={t('settings.users.colEmail', 'Email')}
               size="small"
               required
-              value={addForm.username}
-              onChange={(e) => setAddForm((f) => ({ ...f, username: e.target.value }))}
+              value={addForm.email}
+              onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
             />
             <TextField
               label={t('settings.users.colFullName', 'Full name')}
@@ -411,8 +412,8 @@ const UsersRolesSettings = () => {
               required
               value={addForm.password}
               onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))}
-              helperText={t('settings.users.min4', 'Minimum 4 characters')}
-              error={addForm.password.length > 0 && addForm.password.length < 4}
+              helperText={t('settings.users.min8', 'Minimum 8 characters')}
+              error={addForm.password.length > 0 && addForm.password.length < 8}
               InputProps={{ endAdornment: eyeAdornment(showAddPw, () => setShowAddPw((s) => !s)) }}
             />
             <TextField
@@ -444,7 +445,7 @@ const UsersRolesSettings = () => {
         <DialogContent>
           {editForm ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField label={t('settings.users.colUsername', 'Username')} size="small" value={editForm.username} InputProps={{ readOnly: true }} disabled />
+              <TextField label={t('settings.users.colEmail', 'Email')} size="small" value={editForm.email} InputProps={{ readOnly: true }} disabled />
               <TextField
                 label={t('settings.users.colFullName', 'Full name')}
                 size="small"
@@ -478,7 +479,7 @@ const UsersRolesSettings = () => {
 
       {/* ---- Reset password dialog ---- */}
       <Dialog open={pwOpen} onClose={() => setPwOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>{t('settings.users.resetPasswordTitle', 'Reset Password')}{pwUser ? ` — ${pwUser.username}` : ''}</DialogTitle>
+        <DialogTitle>{t('settings.users.resetPasswordTitle', 'Reset Password')}{pwUser ? ` — ${pwUser.email}` : ''}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
@@ -488,8 +489,8 @@ const UsersRolesSettings = () => {
               required
               value={pwValue}
               onChange={(e) => setPwValue(e.target.value)}
-              helperText={t('settings.users.min4', 'Minimum 4 characters')}
-              error={pwValue.length > 0 && pwValue.length < 4}
+              helperText={t('settings.users.min8', 'Minimum 8 characters')}
+              error={pwValue.length > 0 && pwValue.length < 8}
               InputProps={{ endAdornment: eyeAdornment(showResetPw, () => setShowResetPw((s) => !s)) }}
             />
           </Stack>

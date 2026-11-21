@@ -28,20 +28,19 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (username, password) => {
+  const login = async (email, password) => {
     setIsLoading(true);
     try {
-      const data = await authService.login(username, password);
+      const data = await authService.login(email, password);
 
       localStorage.setItem('skr_token', data.token);
       localStorage.setItem('skr_user', JSON.stringify(data.user));
-      
+
       setUser(data.user);
       setIsAuthenticated(true);
-      // Settings (incl. ROLE_PERMISSIONS) must be refetched with THIS user's X-User-Id
-      // header before we proceed, so menus/permissions reflect the new user immediately
-      // (not the previous user's cached values). Drop stale cache, then await a fresh fetch.
-      queryClient.removeQueries({ queryKey: ['appSettings'] });
+      // Drop every cached query (another user's / portfolio's data must never show), then load
+      // settings (incl. ROLE_PERMISSIONS) for THIS session before continuing.
+      queryClient.clear();
       try {
         await queryClient.refetchQueries({ queryKey: ['appSettings'] });
       } catch { /* non-fatal; provider will retry */ }
@@ -53,12 +52,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  // Close the server session first (the request needs the token), then clear everything locally.
+  const logout = async () => {
+    try { await authService.logout(); } catch { /* session may already be gone */ }
     localStorage.removeItem('skr_token');
     localStorage.removeItem('skr_user');
     setUser(null);
     setIsAuthenticated(false);
-    queryClient.removeQueries({ queryKey: ['appSettings'] });
+    queryClient.clear();
+  };
+
+  // After a portfolio switch: store the new session view and drop all cached data.
+  const updateSession = (nextUser) => {
+    localStorage.setItem('skr_user', JSON.stringify(nextUser));
+    setUser(nextUser);
+    queryClient.clear();
   };
 
   const value = {
@@ -67,6 +75,7 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     logout,
+    updateSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

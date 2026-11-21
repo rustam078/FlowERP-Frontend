@@ -12,6 +12,7 @@ export const ACTIONS = ['view', 'write', 'delete'];
 
 export const ROLE_ADMIN = 'ADMIN';
 export const ROLE_STAFF = 'STAFF';
+export const ROLE_SUPER_ADMIN = 'SUPER_ADMIN'; // no portfolio of its own; full rights inside the one it switches into
 
 /**
  * Role-based access for the current user.
@@ -23,7 +24,7 @@ export const usePermissions = () => {
   const { rolePermissions, staffDashboardBoards } = useAppSettings();
 
   const role = user?.role || ROLE_STAFF;
-  const isAdmin = role === ROLE_ADMIN;
+  const isAdmin = role === ROLE_ADMIN || role === ROLE_SUPER_ADMIN;
 
   const can = useMemo(() => {
     return (module, action = 'view') => {

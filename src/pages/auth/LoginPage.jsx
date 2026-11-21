@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -29,7 +29,6 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import axiosInstance from '../../services/axios';
 import loginHero from '../../assets/login_hero.png';
 
 const LoginPage = () => {
@@ -40,14 +39,8 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [companyName, setCompanyName] = useState('SKR Garment');
-
-  // Company name comes from settings (public endpoint) so the login page shows the real brand.
-  useEffect(() => {
-    axiosInstance.get('/settings/COMPANY_NAME')
-      .then((res) => { const v = res.data?.value; if (v) setCompanyName(v); })
-      .catch(() => {});
-  }, []);
+  // Before sign-in there is no portfolio yet, so the login page shows the product name.
+  const companyName = 'FlowERP';
 
   const {
     register,
@@ -55,8 +48,8 @@ const LoginPage = () => {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      username: 'admin',
-      password: 'admin123',
+      email: '',
+      password: '',
       rememberMe: true,
     },
   });
@@ -68,7 +61,7 @@ const LoginPage = () => {
     setErrorMsg('');
     setIsSubmitting(true);
     
-    const result = await login(data.username, data.password);
+    const result = await login(data.email.trim(), data.password);
     
     if (result.success) {
       navigate(from, { replace: true });
@@ -267,15 +260,17 @@ const LoginPage = () => {
               <TextField
                 margin="normal"
                 fullWidth
-                id="username"
-                label={t('ui.login.username', 'Username')}
-                placeholder="admin"
+                id="email"
+                type="email"
+                label={t('ui.login.email', 'Email')}
+                placeholder="name@company.com"
                 autoComplete="email"
                 autoFocus
-                error={!!errors.username}
-                helperText={errors.username?.message}
-                {...register('username', {
-                  required: t('ui.login.usernameRequired', 'Username is required'),
+                error={!!errors.email}
+                helperText={errors.email?.message}
+                {...register('email', {
+                  required: t('ui.login.emailRequired', 'Email is required'),
+                  pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: t('ui.login.emailInvalid', 'Enter a valid email') },
                 })}
                 InputProps={{
                   startAdornment: (
@@ -291,7 +286,7 @@ const LoginPage = () => {
                 margin="normal"
                 fullWidth
                 label={t('ui.login.password', 'Password')}
-                placeholder="admin123"
+                placeholder="••••••••"
                 type={showPassword ? 'text' : 'password'}
                 id="password"
                 autoComplete="current-password"
