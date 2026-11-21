@@ -63,11 +63,14 @@ axiosInstance.interceptors.response.use(
     }
 
     const clientMessage = error.message || 'An unexpected connection error occurred';
-    const message = serverMessage || clientMessage;
-    
+    // Unexpected server errors carry a short reference: the same id is in the logs and the audit log.
+    const ref = error.response?.data?.requestId;
+    const message = (serverMessage || clientMessage) + (ref && status >= 500 ? ` (Ref: ${ref})` : '');
+
     // Create custom error object
     const customError = new Error(message);
     customError.status = status;
+    customError.requestId = ref;
     customError.response = error.response;
     
     return Promise.reject(customError);

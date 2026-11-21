@@ -11,6 +11,7 @@ export default {
   'nav.sales': 'Sales',
   'nav.revenue': 'Revenue',
   'nav.settings': 'Settings',
+  'nav.guide': 'User Guide',
 
   // ── Common actions / labels (reuse everywhere) ──
   'common.save': 'Save',

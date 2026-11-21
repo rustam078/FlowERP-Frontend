@@ -188,6 +188,22 @@ const IconPicker = ({ value, onChange }) => {
   );
 };
 
+// Card price tooltip: in-stock prices in the order they will be sold (oldest stock first).
+const StockPriceSteps = ({ steps, t }) => {
+  const money = (v) => `${getCurrencySymbol()}${Number(v).toLocaleString('en-IN')}`;
+  const qty = (v) => Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  return (
+    <div style={{ fontSize: '0.75rem', lineHeight: 1.7 }}>
+      <div style={{ fontWeight: 700, marginBottom: 2 }}>{t('products.priceBySellingOrder', 'Price by stock (oldest sold first)')}</div>
+      {steps.map((s, i) => (
+        <div key={i} style={{ fontWeight: i === 0 ? 700 : 400 }}>
+          {i === 0 ? t('products.nowSelling', 'Now') : t('products.thenSelling', 'Then')}: {money(s.price)} · {qty(s.quantity)} {t('products.pcs', 'pcs')}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 /* ─────────────────────────────────────────────────────────
    Main Products Page Component
    ───────────────────────────────────────────────────────── */
@@ -664,24 +680,12 @@ const ProductsPage = () => {
                       >
                         {product.name}
                       </div>
-                      {/* Current/latest list price; hover shows per-batch prices when they vary */}
-                      <Tooltip
-                        title={(product.batchSalePrices && product.batchSalePrices.length > 1) ? (
-                          <div style={{ fontSize: '0.75rem', lineHeight: 1.6 }}>
-                            <div style={{ fontWeight: 700, marginBottom: 2 }}>{t('products.batchPrices', 'Batch prices')} ({product.batchSalePrices.length})</div>
-                            {product.batchSalePrices.map((p, i) => (
-                              <div key={i}>{getCurrencySymbol()}{Number(p).toLocaleString('en-IN')}</div>
-                            ))}
-                            <div style={{ marginTop: 3, opacity: 0.85 }}>
-                              {t('products.range', 'Range')} {getCurrencySymbol()}{Number(product.batchSalePrices[0]).toLocaleString('en-IN')}–{getCurrencySymbol()}{Number(product.batchSalePrices[product.batchSalePrices.length - 1]).toLocaleString('en-IN')}
-                            </div>
-                          </div>
-                        ) : ''}
-                      >
+                      {/* Price the next sale uses (oldest in-stock batch, FIFO); hover shows what follows when it runs out */}
+                      <Tooltip title={product.stockPrices?.length > 1 ? <StockPriceSteps steps={product.stockPrices} t={t} /> : ''}>
                         <div style={{
                           marginTop: 4, fontSize: '1rem', fontWeight: 800, color: 'var(--theme-primary)', display: 'inline-block',
-                          cursor: (product.batchSalePrices && product.batchSalePrices.length > 1) ? 'help' : 'default',
-                          borderBottom: (product.batchSalePrices && product.batchSalePrices.length > 1) ? '1px dotted #94A3B8' : 'none',
+                          cursor: product.stockPrices?.length > 1 ? 'help' : 'default',
+                          borderBottom: product.stockPrices?.length > 1 ? '1px dotted #94A3B8' : 'none',
                         }}>
                           {product.sellingPrice != null
                             ? `${getCurrencySymbol()}${Number(product.sellingPrice).toLocaleString('en-IN')}`

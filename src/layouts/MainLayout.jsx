@@ -1,15 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { Box, Toolbar, useTheme, useMediaQuery } from '@mui/material';
 import Navbar from '../components/layout/Navbar';
 import Sidebar, { DRAWER_WIDTH } from '../components/layout/Sidebar';
 import LowStockAlertsDrawer from '../components/layout/LowStockAlertsDrawer';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 const MainLayout = () => {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const mainRef = useRef(null);
+  const { pathname, search } = useLocation();
+
+  // The page scrolls inside <main>, not the window, so the browser never resets it: every new screen
+  // must start at the top. Instant (no animation), and before paint so there is no visible jump.
+  useLayoutEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname, search]);
 
   // The navbar bell opens the global low-stock alerts drawer on the current page.
   useEffect(() => {
@@ -37,6 +45,7 @@ const MainLayout = () => {
       {/* Primary Page Canvas */}
       <Box
         component="main"
+        ref={mainRef}
         sx={{
           flexGrow: 1,
           p: { xs: 2.5, md: 4 },

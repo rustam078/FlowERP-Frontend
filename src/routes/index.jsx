@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
 import ProtectedRoute from '../components/common/ProtectedRoute';
 import ModuleGuard from '../components/common/ModuleGuard';
 import HomeRedirect from '../components/common/HomeRedirect';
@@ -28,7 +29,12 @@ import SalesList from '../modules/sales/pages/SalesList';
 import SaleDetails from '../modules/sales/pages/SaleDetails';
 import InvoicePreview from '../modules/sales/pages/InvoicePreview';
 import PortfolioPickerPage from '../pages/portfolios/PortfolioPickerPage';
+import AuditLogsPage from '../pages/audit/AuditLogsPage';
 import { PortfolioGate, SuperAdminRoute } from '../components/common/PortfolioGate';
+
+// User Guide is loaded only when opened (static content + screenshots).
+const GuidePage = lazy(() => import('../modules/guide/GuidePage'));
+const GuideLoading = () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
 
 const AppRoutes = () => {
   return (
@@ -41,6 +47,7 @@ const AppRoutes = () => {
         {/* Super admin: pick / manage portfolios (full page, outside the app layout) */}
         <Route element={<SuperAdminRoute />}>
           <Route path="/portfolios" element={<PortfolioPickerPage />} />
+          <Route path="/audit-logs" element={<AuditLogsPage />} />
         </Route>
         <Route element={<PortfolioGate />}>
         <Route element={<MainLayout />}>
@@ -73,6 +80,7 @@ const AppRoutes = () => {
           <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
           <Route path="/revenue" element={<RevenuePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/guide" element={<Suspense fallback={<GuideLoading />}><GuidePage /></Suspense>} />
          </Route>
         </Route>
         </Route>

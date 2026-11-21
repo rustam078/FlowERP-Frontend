@@ -10,6 +10,7 @@ export default {
   'nav.sales': 'बिक्री',
   'nav.revenue': 'राजस्व',
   'nav.settings': 'सेटिंग्स',
+  'nav.guide': 'यूज़र गाइड',
 
   // ── Common ──
   'common.save': 'सेव करें',

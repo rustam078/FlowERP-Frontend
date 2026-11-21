@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import {
   SwapHoriz as SwapHorizIcon,
+  HelpOutline as HelpOutlineIcon,
   Menu as MenuIcon,
   Notifications as NotificationsIcon,
   ExitToApp as LogoutIcon,
@@ -37,7 +38,8 @@ import { useThemeColor } from '../../contexts/ThemeColorContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { authService } from '../../services/authService';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { sectionForPath } from '../../modules/guide/guideSections';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../services/axios';
 
@@ -48,6 +50,7 @@ const Navbar = ({ onToggleSidebar, sidebarOpen }) => {
   const { t } = useLanguage();
   const { isAdmin } = usePermissions();
   const navigate = useNavigate();
+  const location = useLocation();
   const [anchorEl, setAnchorEl] = useState(null);
 
   // Change-password dialog
@@ -165,6 +168,13 @@ const Navbar = ({ onToggleSidebar, sidebarOpen }) => {
         ) : null}
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* Help: opens the User Guide at the current screen's section */}
+          <Tooltip title={t('nav.guide', 'User Guide')}>
+            <IconButton color="inherit" size="large" aria-label="user guide"
+              onClick={() => navigate(`/guide?section=${sectionForPath(location.pathname)}`)}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
           {/* Low-stock alerts */}
           <Tooltip title={`${t('ui.nav.lowStockAlerts', 'Low Stock Alerts')}${lowStockCount > 0 ? ` (${lowStockCount})` : ''}`}>
             <IconButton color="inherit" size="large" onClick={handleOpenAlerts} aria-label="low stock alerts">

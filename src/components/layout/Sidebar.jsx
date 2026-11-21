@@ -32,6 +32,7 @@ import {
   Settings as SettingsIcon,
   AccountBalanceWallet as InvestmentIcon,
   Paid as RevenueIcon,
+  MenuBookOutlined as GuideIcon,
 } from '@mui/icons-material';
 
 const DRAWER_WIDTH = 228;
@@ -49,6 +50,7 @@ const MENU_ITEMS = [
   { key: 'inventory', text: 'Inventory', path: '/inventory', icon: <InventoryIcon /> },
   { key: 'revenue', text: 'Revenue', path: '/revenue', icon: <RevenueIcon /> },
   { key: 'settings', text: 'Settings', path: '/settings', icon: <SettingsIcon /> },
+  { key: 'guide', text: 'User Guide', path: '/guide', icon: <GuideIcon />, always: true },
 ];
 
 // Shared with the Settings reorder UI so both stay in sync.
@@ -85,7 +87,7 @@ const Sidebar = ({ open, onToggleSidebar, variant = 'permanent' }) => {
   const dividerCol = txt === txt ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
   // Only show modules the current role can view (ADMIN sees all).
   const orderedItems = useMemo(
-    () => orderMenu(MENU_ITEMS, menuOrder).filter((item) => can(item.key, 'view')),
+    () => orderMenu(MENU_ITEMS, menuOrder).filter((item) => item.always || can(item.key, 'view')),
     [menuOrder, can]
   );
 

@@ -8,7 +8,6 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import LoginIcon from '@mui/icons-material/Login';
-import LogoutIcon from '@mui/icons-material/Logout';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import dayjs from 'dayjs';
@@ -18,13 +17,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useT } from '../../contexts/LanguageContext';
 import CreatePortfolioDialog from './CreatePortfolioDialog';
 import DeletePortfolioDialog from './DeletePortfolioDialog';
+import SuperAdminHeader from './SuperAdminHeader';
 
 /** SUPER_ADMIN home: pick a portfolio to work in, and create / (de)activate / delete portfolios. */
 const PortfolioPickerPage = () => {
   const t = useT();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, logout, updateSession } = useAuth();
+  const { user, updateSession } = useAuth();
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [toDelete, setToDelete] = useState(null);
@@ -66,11 +66,7 @@ const PortfolioPickerPage = () => {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F8FAFC' }}>
-      <Box sx={{ bgcolor: 'var(--theme-primary)', color: '#fff', px: { xs: 2, sm: 4 }, py: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', flexGrow: 1 }}>FlowERP</Typography>
-        <Typography sx={{ fontSize: '0.85rem', opacity: 0.85, display: { xs: 'none', sm: 'block' } }}>{user?.email}</Typography>
-        <Button color="inherit" size="small" startIcon={<LogoutIcon />} onClick={logout}>{t('portfolio.logout', 'Logout')}</Button>
-      </Box>
+      <SuperAdminHeader />
 
       <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 2, sm: 4 }, py: 4 }}>
         <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} sx={{ mb: 3 }}>
