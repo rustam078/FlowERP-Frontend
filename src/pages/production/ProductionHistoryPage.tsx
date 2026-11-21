@@ -336,7 +336,7 @@ const ProductionHistoryPage: React.FC = () => {
               <HeadingInfo text={t('production.historyInfo', 'Review and audit historic enterprise garment production entries.')} />
             </Typography>
           </div>
-          <Space>
+          <Space wrap>
             <Button icon={<DownloadOutlined />} onClick={() => setReportOpen(true)} style={{ borderRadius: 6, fontWeight: 600 }}>
               {t('production.downloadReport', 'Download report')}
             </Button>

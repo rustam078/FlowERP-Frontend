@@ -1739,7 +1739,7 @@ const InvestmentPage = () => {
                     </span>
                   </div>
                 </div>
-                <Space size={10} style={{ flexShrink: 0 }}>
+                <Space size={10} wrap>
                   <Popover
                     trigger="click"
                     placement="leftTop"
@@ -1850,6 +1850,8 @@ const InvestmentPage = () => {
                 <Table
                   className="custom-table"
                   size="small"
+                  scroll={{ x: 'max-content' }}
+                  tableLayout="auto"
                   rowKey="id"
                   dataSource={investments
                     .filter((i) => {
@@ -1960,6 +1962,8 @@ const InvestmentPage = () => {
                 <Table
                   className="custom-table"
                   size="small"
+                  scroll={{ x: 'max-content' }}
+                  tableLayout="auto"
                   rowKey="id"
                   dataSource={filteredVendors.map((v) => ({ ...v, key: v.id }))}
                   columns={vendorColumns}

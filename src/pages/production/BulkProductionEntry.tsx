@@ -297,13 +297,18 @@ const BulkProductionEntry: React.FC = () => {
               ),
               children: (
                 <div>
-                  {/* column header */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px 110px 110px 40px', gap: 8, padding: '0 0 6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
-                    <span>#</span><span>{t('production.bulk.work', 'Work')}</span>
-                    <span>{t('production.colQuantity', 'Quantity')}</span><span>{t('production.rate', 'Rate')}</span>
-                    <span style={{ textAlign: 'right' }}>{t('common.amount', 'Amount')}</span><span />
+                  {/* Work lines scroll sideways on a phone instead of cutting off the last columns */}
+                  <div className="work-lines-scroll" style={{ overflowX: 'auto' }}>
+                    <div style={{ minWidth: 480 }}>
+                      {/* column header */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px 110px 110px 40px', gap: 8, padding: '0 0 6px', fontSize: '0.75rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
+                        <span>#</span><span>{t('production.bulk.work', 'Work')}</span>
+                        <span>{t('production.colQuantity', 'Quantity')}</span><span>{t('production.rate', 'Rate')}</span>
+                        <span style={{ textAlign: 'right' }}>{t('common.amount', 'Amount')}</span><span />
+                      </div>
+                      {emp.products.map((row, idx) => renderRow(emp, row, idx))}
+                    </div>
                   </div>
-                  {emp.products.map((row, idx) => renderRow(emp, row, idx))}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, borderTop: '1px solid #E2E8F0', paddingTop: 10 }}>
                     <Button type="dashed" icon={<PlusOutlined />}
                       onClick={() => updateEmp(emp.key, (e) => ({ ...e, products: [...e.products, emptyRow()] }))}>

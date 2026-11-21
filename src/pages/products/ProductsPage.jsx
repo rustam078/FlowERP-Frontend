@@ -17,7 +17,6 @@ import {
   Popover,
   Tooltip,
   Popconfirm,
-  Dropdown,
   Tag,
   Select,
   Drawer,
@@ -27,7 +26,6 @@ import {
 } from 'antd';
 import {
   ShoppingOutlined,
-  CheckCircleOutlined,
   PlusOutlined,
   AppstoreAddOutlined,
   SearchOutlined,
@@ -36,8 +34,6 @@ import {
   FilterOutlined,
   EyeOutlined,
   BarcodeOutlined,
-  MoreOutlined,
-  StopOutlined,
   ReloadOutlined,
   BuildOutlined,
   MinusCircleOutlined,
@@ -361,32 +357,6 @@ const ProductsPage = () => {
     },
   });
 
-  const handleToggleStatus = (record) => {
-    if (record.active) {
-      Modal.confirm({
-        title: t('products.archive.title', 'Move to Archive'),
-        content: (
-          <div>
-            <p>
-              {t('products.archive.lineA', 'Deactivating "')}{record.name}{t('products.archive.lineB', '" will move it to the Archive tab. It will no longer appear in the active product listing, but can be restored later.')}
-            </p>
-            <p style={{ marginBottom: 0 }}>
-              {t('products.archive.confirm', 'Are you sure you want to archive this product?')}
-            </p>
-          </div>
-        ),
-        okText: t('products.archive.ok', 'Archive Product'),
-        okButtonProps: { style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } },
-        cancelText: t('common.cancel', 'Cancel'),
-        onOk() {
-          toggleStatusMutation.mutate({ id: record.id, active: false });
-        },
-      });
-    } else {
-      toggleStatusMutation.mutate({ id: record.id, active: true });
-    }
-  };
-
   const onFinishProduct = (values) => {
     const normalizedName = values.name?.trim().toLowerCase();
     if (!normalizedName) {
@@ -582,17 +552,6 @@ const ProductsPage = () => {
                 navigate(`/products/${product.id}?${nextParams.toString()}`);
               };
 
-              const dropdownMenu = {
-                items: [
-                  {
-                    key: 'toggle-status',
-                    label: product.active ? t('products.deactivateProduct', 'Deactivate Product') : t('products.activateProduct', 'Activate Product'),
-                    icon: product.active ? <StopOutlined style={{ color: '#EA580C' }} /> : <CheckCircleOutlined style={{ color: 'var(--theme-primary)' }} />,
-                    onClick: () => handleToggleStatus(product),
-                  },
-                ],
-              };
-
               return (
                 <Col xs={12} sm={8} md={6} lg={4} key={product.id}>
                   <div className="product-card" style={{ ...cardStyle, height: '100%', display: 'flex', flexDirection: 'column' }} onClick={openDetails}>
@@ -653,23 +612,6 @@ const ProductsPage = () => {
                         {product.active ? t('products.active', 'Active') : t('products.inactive', 'Inactive')}
                       </span>
 
-                      {/* Kebab (top-right corner) */}
-                      {can('products', 'write') && (
-                      <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 2 }} onClick={(e) => e.stopPropagation()}>
-                        <Dropdown menu={dropdownMenu} trigger={['click']} placement="bottomRight">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<MoreOutlined style={{ fontSize: '1.05rem', color: '#334155' }} />}
-                            style={{
-                              width: 26, height: 26, padding: 0, borderRadius: '50%',
-                              background: '#ffffff', boxShadow: '0 1px 4px rgba(15,23,42,0.18)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}
-                          />
-                        </Dropdown>
-                      </div>
-                      )}
                     </div>
 
                     {/* Body */}

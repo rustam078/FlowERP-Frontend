@@ -266,6 +266,7 @@ const Sidebar = ({ open, onToggleSidebar, variant = 'permanent' }) => {
           open={open}
           onClose={onToggleSidebar}
           ModalProps={{ keepMounted: true }}
+          className="mobile-nav"
           sx={{
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',

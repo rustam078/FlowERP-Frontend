@@ -144,7 +144,7 @@ const SalesList = () => {
           ) : null}
         </Stack>
 
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <Badge color="primary" badgeContent={activeCount} overlap="circular">
             <Button
               variant="outlined"

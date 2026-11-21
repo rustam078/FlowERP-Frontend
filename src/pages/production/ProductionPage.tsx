@@ -437,7 +437,7 @@ const ProductionPage: React.FC = () => {
               <HeadingInfo text={t('production.pageInfo', 'Manage daily production entries with piece code based pricing.')} />
             </Typography>
           </div>
-          <Space size={10}>
+          <Space size={10} wrap>
             <Popover
               trigger="click"
               placement="bottomRight"

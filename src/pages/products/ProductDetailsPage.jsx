@@ -463,6 +463,40 @@ const ProductDetailsPage = () => {
     },
   });
 
+  // Activate / deactivate (archive) the product itself.
+  const productStatusMutation = useMutation({
+    mutationFn: (active) => productService.updateProductStatus(productId, active),
+    onSuccess: (res) => {
+      notification.success({ message: t('products.toast.statusUpdated', 'Status Updated'), description: res.message || t('products.toast.statusUpdatedDesc', 'Product status updated.'), placement: 'topRight', duration: 3 });
+      queryClient.invalidateQueries({ queryKey: ['product', productId] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (err) => {
+      notification.error({ message: t('products.toast.statusError', 'Error Updating Status'), description: err.response?.data?.message || err.message, placement: 'topRight', duration: 4.5 });
+    },
+  });
+
+  // Deactivating asks first (the product moves to the Archive tab); activating is immediate.
+  const handleToggleProductStatus = () => {
+    if (!product.active) {
+      productStatusMutation.mutate(true);
+      return;
+    }
+    Modal.confirm({
+      title: t('products.archive.title', 'Move to Archive'),
+      content: (
+        <div>
+          <p>{t('products.archive.lineA', 'Deactivating "')}{product.name}{t('products.archive.lineB', '" will move it to the Archive tab. It will no longer appear in the active product listing, but can be restored later.')}</p>
+          <p style={{ marginBottom: 0 }}>{t('products.archive.confirm', 'Are you sure you want to archive this product?')}</p>
+        </div>
+      ),
+      okText: t('products.archive.ok', 'Archive Product'),
+      okButtonProps: { style: { background: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' } },
+      cancelText: t('common.cancel', 'Cancel'),
+      onOk: () => productStatusMutation.mutate(false),
+    });
+  };
+
   const updateStatusMutation = useMutation({
     mutationFn: ({ pieceCodeId, active }) => productService.updatePieceCodeStatus(pieceCodeId, active),
     onSuccess: (res) => {
@@ -937,7 +971,7 @@ const ProductDetailsPage = () => {
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
             {/* Left: Icon + Info */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', minWidth: 0, flex: '1 1 280px' }}>
               {/* Large Product Image / Icon + admin controls */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <div style={{
@@ -1012,11 +1046,12 @@ const ProductDetailsPage = () => {
                 )}
               </div>
 
-              {/* Product Info */}
-              <div>
+              {/* Product Info (can shrink inside the card on a phone) */}
+              <div style={{ minWidth: 0, flex: '1 1 220px' }}>
                 {/* Name + Status */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: '#0F172A', letterSpacing: -0.5, display: 'inline-flex', alignItems: 'center' }}>
+                {/* Wraps on a phone: the status tag and the (de)activate button move to the next line instead of overflowing */}
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, rowGap: 8, marginBottom: 4, minWidth: 0 }}>
+                  <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, color: '#0F172A', letterSpacing: -0.5, display: 'inline-flex', alignItems: 'center', minWidth: 0, overflowWrap: 'anywhere' }}>
                     {product.name}
                     <HeadingInfo text={t('products.details.info', 'Piece codes, rates, material cost and production history for this product.')} />
                   </h1>
@@ -1031,6 +1066,19 @@ const ProductDetailsPage = () => {
                     <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: product.active ? '#16A34A' : '#DC2626' }} />
                     {product.active ? t('products.active', 'Active') : t('products.inactive', 'Inactive')}
                   </span>
+                  {/* Deactivate (archive) / activate the product */}
+                  {can('products', 'write') && (
+                    <Button
+                      size="small"
+                      danger={product.active}
+                      icon={product.active ? <StopOutlined /> : <CheckCircleOutlined />}
+                      loading={productStatusMutation.isPending}
+                      onClick={handleToggleProductStatus}
+                      style={{ borderRadius: 20, fontWeight: 600 }}
+                    >
+                      {product.active ? t('products.deactivateProduct', 'Deactivate Product') : t('products.activateProduct', 'Activate Product')}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Description */}

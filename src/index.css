@@ -264,3 +264,42 @@ body,
 .ant-input-number-handler { display: none !important; }
 .ant-input-number:hover .ant-input-number-handler-wrap,
 .ant-input-number-focused .ant-input-number-handler-wrap { display: none !important; }
+
+/* Phone / tablet: every table keeps its natural width and scrolls sideways instead of squeezing
+   (AntD + MUI, also tables inside forms, drawers and dialogs). Headers stay on one line. */
+@media (max-width: 900px) {
+  .ant-table-wrapper .ant-table-container,
+  .ant-table-wrapper .ant-table-content,
+  .ant-table-wrapper .ant-table-body { overflow-x: auto !important; }
+  .ant-table-wrapper .ant-table-content > table,
+  .ant-table-wrapper .ant-table-body > table { width: max-content !important; min-width: 100%; }
+  .ant-table-wrapper .ant-table-thead > tr > th { white-space: nowrap; }
+  .MuiTableContainer-root { overflow-x: auto; }
+  .MuiTableContainer-root > .MuiTable-root { width: max-content; min-width: 100%; }
+  .MuiTableContainer-root .MuiTableHead-root .MuiTableCell-root { white-space: nowrap; }
+}
+
+/* Scrollbars are hidden everywhere except the page itself (<main>) — tables, cards, panels, lists.
+   Scrolling still works by swipe / wheel; nested areas no longer show two bars at once. */
+*:not(html):not(body):not(main) {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*:not(html):not(body):not(main)::-webkit-scrollbar {
+  display: none;
+}
+
+/* Side drawers (MUI + AntD, left / right) open just below the 64px top bar on every screen size:
+   the top bar stays visible and clickable, and the drawer's own header is never hidden behind it.
+   The phone menu keeps its original layout (under the top bar, with its own spacer). */
+:root { --app-header-height: 64px; }
+.MuiDrawer-root.MuiDrawer-modal:not(.mobile-nav) { top: var(--app-header-height) !important; }
+.MuiDrawer-root.MuiDrawer-modal:not(.mobile-nav) .MuiBackdrop-root { top: var(--app-header-height); }
+.MuiDrawer-root.MuiDrawer-modal:not(.mobile-nav) .MuiDrawer-paperAnchorRight,
+.MuiDrawer-root.MuiDrawer-modal:not(.mobile-nav) .MuiDrawer-paperAnchorLeft {
+  top: var(--app-header-height);
+  height: calc(100% - var(--app-header-height));
+}
+.MuiDrawer-root.MuiDrawer-modal.mobile-nav { z-index: 1200; }
+.ant-drawer.ant-drawer-left,
+.ant-drawer.ant-drawer-right { top: var(--app-header-height) !important; }

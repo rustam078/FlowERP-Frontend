@@ -4,6 +4,7 @@ import {
   Button,
   Chip,
   Drawer,
+  IconButton,
   Paper,
   Stack,
   Table,
@@ -15,6 +16,7 @@ import {
   Typography,
 } from '@mui/material';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../services/axios';
@@ -47,17 +49,22 @@ const LowStockAlertsDrawer = ({ open, onClose }) => {
       anchor="right"
       open={open}
       onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 560 }, p: 3, overflowX: 'hidden' } }}
+      // Above the navbar (1201): on a phone the panel is full screen, so its header and close button must show.
+      sx={{ zIndex: 1250 }}
+      PaperProps={{ sx: { width: { xs: '100%', sm: 560 }, p: { xs: 2, sm: 3 }, overflowX: 'hidden' } }}
     >
       <Stack spacing={2.5} sx={{ height: '100%', overflow: 'hidden' }}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            {t('ui.lowStock.title', 'Low Stock Products')}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t('ui.lowStock.subtitle', 'Review products at or below the global threshold.')}
-          </Typography>
-        </Box>
+        <Stack direction="row" alignItems="flex-start" spacing={1}>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {t('ui.lowStock.title', 'Low Stock Products')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t('ui.lowStock.subtitle', 'Review products at or below the global threshold.')}
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} aria-label="close"><CloseIcon /></IconButton>
+        </Stack>
 
         {alerts.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 6 }}>
