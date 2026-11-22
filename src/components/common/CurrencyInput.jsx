@@ -8,7 +8,7 @@ import { getCurrencySymbol } from '../../utils/currency';
  * The symbol follows Application Settings (₹ / $ / €) via getCurrencySymbol,
  * so callers never hardcode it.
  */
-const CurrencyInput = ({ style, className = '', ...props }) => (
+const CurrencyInput = ({ style={}, className = '', ...props }) => (
   <InputNumber
     controls={false}
     min={0}

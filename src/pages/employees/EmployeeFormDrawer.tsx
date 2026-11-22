@@ -82,7 +82,6 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     <Drawer
       title={
         <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
-          {isEdit ? <EditOutlined style={{ color: 'var(--theme-primary)' }} /> : <PlusOutlined style={{ color: 'var(--theme-primary)' }} />}
           {isEdit ? t('employees.form.editTitle', 'Edit Employee') : t('employees.form.addTitle', 'Add Employee')}
         </span>
       }

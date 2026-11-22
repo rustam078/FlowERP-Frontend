@@ -13,28 +13,18 @@ import {
   Table,
   Button,
   Space,
-  Drawer,
-  Form,
-  Input,
   InputNumber,
-  DatePicker,
   Popconfirm,
   Tooltip,
   Skeleton,
   Result,
   notification,
   Modal,
-  Empty,
-  Alert,
-  Dropdown,
   Segmented,
-  Tag,
-  Tabs,
 } from 'antd';
 import {
   ArrowLeftOutlined,
   PlusOutlined,
-  BarcodeOutlined,
   CheckCircleOutlined,
   StopOutlined,
   DeleteOutlined,
@@ -46,7 +36,6 @@ import {
   ReloadOutlined,
   RiseOutlined,
   FallOutlined,
-  MoreOutlined,
   LeftOutlined,
   IdcardOutlined,
   ClockCircleOutlined,
@@ -54,10 +43,6 @@ import {
   BuildOutlined,
   EditOutlined,
   RightOutlined,
-  FileTextOutlined,
-  InboxOutlined,
-  QrcodeOutlined,
-  SlidersOutlined,
 } from '@ant-design/icons';
 import { Box } from '@mui/material';
 import dayjs from 'dayjs';
@@ -70,78 +55,6 @@ import { useT } from '../../contexts/LanguageContext';
 import GenerateLabelsDialog from '../../modules/qr/components/GenerateLabelsDialog';
 import BatchHistorySection from '../../components/products/BatchHistorySection';
 
-/* ─────────────────────────────────────────
-   Mini Sparkline (CSS only, no library)
-   ───────────────────────────────────────── */
-const Sparkline = ({ color = 'var(--theme-primary)' }) => (
-  <svg width="80" height="36" viewBox="0 0 80 36" fill="none" style={{ opacity: 0.8 }}>
-    <polyline
-      points="0,28 12,22 24,26 36,14 48,18 60,8 72,12 80,6"
-      fill="none"
-      stroke={color}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <defs>
-      <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor={color} stopOpacity="0.15" />
-        <stop offset="100%" stopColor={color} stopOpacity="0" />
-      </linearGradient>
-    </defs>
-    <polygon
-      points="0,28 12,22 24,26 36,14 48,18 60,8 72,12 80,6 80,36 0,36"
-      fill={`url(#grad-${color.replace('#', '')})`}
-    />
-  </svg>
-);
-
-/* ─────────────────────────────────────────
-   Sub-component: Live Preview Card inside Drawer
-   ───────────────────────────────────────── */
-const PieceCodePreview = ({ code, rate, description }) => {
-  const t = useT();
-  return (
-  <div
-    style={{
-      background: 'linear-gradient(135deg, color-mix(in srgb, var(--theme-primary) 12%, white) 0%, #DBEAFE 100%)',
-      border: '1.5px solid #93C5FD',
-      borderRadius: 12,
-      padding: '10px',
-      position: 'relative',
-      overflow: 'hidden',
-    }}
-  >
-    <div
-      style={{
-        position: 'absolute', top: -20, right: -20,
-        width: 80, height: 80, borderRadius: '50%',
-        backgroundColor: 'rgba(37,99,235,0.07)',
-      }}
-    />
-    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--theme-primary)', textTransform: 'uppercase', letterSpacing: 1 }}>
-      {t('products.preview.live', 'Live Preview')}
-    </div>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: '1.25rem', color: '#0F172A', fontFamily: 'monospace', letterSpacing: 1 }}>
-          {code || <span style={{ color: '#94A3B8', fontStyle: 'italic', fontFamily: 'inherit', fontWeight: 400 }}>CODE-000</span>}
-        </div>
-      </div>
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748B', marginBottom: 2 }}>{t('products.preview.fixedRate', 'Fixed Rate')}</div>
-        <div style={{ fontWeight: 600, fontSize: '1.5rem', color: 'var(--theme-primary)' }}>
-          {rate ? `${getCurrencySymbol()}${Number(rate).toLocaleString('en-IN')}` : <span style={{ color: '#94A3B8', fontSize: '1rem' }}>{getCurrencySymbol()} —</span>}
-        </div>
-      </div>
-    </div>
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', color: 'var(--theme-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700 }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--theme-primary)', display: 'inline-block' }} />
-      {t('products.active', 'Active')}
-    </div>
-  </div>
-  );
-};
 
 /* ─────────────────────────────────────────
    Main Component
@@ -152,13 +65,7 @@ const ProductDetailsPage = () => {
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const t = useT();
-  const [form] = Form.useForm();
 
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const [productionDrawerVisible, setProductionDrawerVisible] = useState(false);
-  const [batchSource, setBatchSource] = useState('ALL'); // View All filter: ALL | PURCHASED | MANUFACTURED
-  const [batchStatus, setBatchStatus] = useState('ACTIVE'); // View All tab: ACTIVE | SOLD
-  const [searchQuery, setSearchQuery] = useState('');
   // Adjust-stock + QR actions on a batch, done right here (mirrors the inventory details page).
   const [adjustTarget, setAdjustTarget] = useState(null);
   const [adjQty, setAdjQty] = useState('');
@@ -166,15 +73,8 @@ const ProductDetailsPage = () => {
   const [adjSaving, setAdjSaving] = useState(false);
   const [adjError, setAdjError] = useState('');
   const [qrBatch, setQrBatch] = useState(null);
-  const [dateRange, setDateRange] = useState([null, null]);
-  const [previewCode, setPreviewCode] = useState('');
-  const [previewRate, setPreviewRate] = useState(null);
-  const [previewDesc, setPreviewDesc] = useState('');
   const [materialCostModalOpen, setMaterialCostModalOpen] = useState(false);
   const [editingMaterialCost, setEditingMaterialCost] = useState(null);
-  const [showAllActivities, setShowAllActivities] = useState(false);
-  const [deletingPieceCodeId, setDeletingPieceCodeId] = useState(null);
-  const [togglingPieceCodeId, setTogglingPieceCodeId] = useState(null);
   const [pricingPage, setPricingPage] = useState(0); // Pricing History: 2 rows per page
 
   const PRICING_PAGE_SIZE = 2;
@@ -267,48 +167,8 @@ const ProductDetailsPage = () => {
 
   const materialCosts = materialCostResponse?.data || [];
   const product = productResponse?.data;
-  const pieceCodes = pieceCodesResponse?.data || [];
-  const productionEntries = productionResponse || [];
+ 
 
-  // ── Analytics Computations ──────────────────────
-  const totalPieceCodes = pieceCodes.length;
-  const activePieceCodes = pieceCodes.filter((pc) => pc.active).length;
-
-  const productProductionItems = React.useMemo(() => {
-    const items = [];
-    productionEntries.forEach((entry) => {
-      if (entry.items && Array.isArray(entry.items)) {
-        entry.items.forEach((item) => {
-          if (item.productId === productId) {
-            items.push({ ...item, productionDate: entry.productionDate, employeeName: entry.employeeName, entryId: entry.id });
-          }
-        });
-      }
-    });
-    return items.sort((a, b) => new Date(b.productionDate) - new Date(a.productionDate));
-  }, [productionEntries, productId]);
-
-  // Stock receipts for the View All drawer, filtered by source + date + batch search.
-  const filteredReceipts = React.useMemo(() => {
-    const rows = batchesResponse?.batches || [];
-    const start = dateRange && dateRange[0] ? dayjs(dateRange[0]) : null;
-    const end = dateRange && dateRange[1] ? dayjs(dateRange[1]) : null;
-    // Backend already returns batches sorted latest-first (receivedDate, then batchNumber).
-    return rows.filter((b) => {
-      if (b.status !== batchStatus) return false;
-      if (batchSource !== 'ALL' && b.source !== batchSource) return false;
-      const day = dayjs(b.receivedDate);
-      if (start && day.isBefore(start, 'day')) return false;
-      if (end && day.isAfter(end, 'day')) return false;
-      return true;
-    });
-  }, [batchesResponse, batchSource, batchStatus, dateRange]);
-
-  const averageRate = React.useMemo(() => pieceCodes.length === 0 ? 0 : pieceCodes.reduce((a, pc) => a + (pc.rate || 0), 0) / pieceCodes.length, [pieceCodes]);
-  const minRate = React.useMemo(() => pieceCodes.length === 0 ? 0 : Math.min(...pieceCodes.map((pc) => pc.rate)), [pieceCodes]);
-  const maxRate = React.useMemo(() => pieceCodes.length === 0 ? 0 : Math.max(...pieceCodes.map((pc) => pc.rate)), [pieceCodes]);
-  const activeCodes = React.useMemo(() => pieceCodes.filter((pc) => pc.active).sort((a, b) => b.rate - a.rate), [pieceCodes]);
-  const maxActiveRate = React.useMemo(() => activeCodes.length === 0 ? 1 : Math.max(...activeCodes.map((pc) => pc.rate)), [activeCodes]);
   const currentMaterialCost = React.useMemo(() => {
     if (!materialCosts.length) return null;
 
@@ -329,139 +189,6 @@ const ProductDetailsPage = () => {
   }, [materialCosts]);
 
 
-  const allActivities = React.useMemo(() => {
-    const activities = [];
-
-    // Material cost activities
-    materialCosts.forEach((mc) => {
-      activities.push({
-        id: `mc-${mc.id}`,
-        type: 'material_cost',
-        title: t('products.activity.pricingUpdated', 'Pricing updated'),
-        subtitle: `${t('products.activity.cost', 'Cost')} ${getCurrencySymbol()}${Number(mc.cost).toFixed(2)}${(mc.salePrice || mc.salePrice === 0) ? ` · ${t('products.activity.sale', 'Sale')} ${getCurrencySymbol()}${Number(mc.salePrice).toFixed(2)}` : ''}\n${t('products.activity.effectiveFrom', 'Effective From:')} ${dayjs(mc.effectiveFrom).format('DD MMM YYYY')}`,
-        date: dayjs(mc.createdAt).format('DD MMM YYYY hh:mm A'),
-        dateBy: `${t('products.by', 'by')} ${mc.createdBy || t('products.activity.admin', 'Admin')}`,
-        sortDate: new Date(mc.createdAt),
-      });
-    });
-
-    // Piece code activities
-    pieceCodes.forEach((pc) => {
-      activities.push({
-        id: `pc-${pc.id}`,
-        type: 'piece_code',
-        title: t('products.activity.pieceCodeCreated', 'Piece code created'),
-        subtitle: `${t('products.activity.pieceCode', 'Piece Code')} ${pc.code} (${pc.pieceType || pc.code})\n${t('products.activity.createdWithRate', 'created with rate')} ${getCurrencySymbol()}${Number(pc.rate).toFixed(2)}`,
-        date: dayjs(pc.createdAt).format('DD MMM YYYY hh:mm A'),
-        dateBy: `${t('products.by', 'by')} ${pc.createdBy || t('products.activity.admin', 'Admin')}`,
-        sortDate: new Date(pc.createdAt),
-      });
-    });
-
-    // Production activities
-    productProductionItems.forEach((item) => {
-      activities.push({
-        id: `prod-${item.entryId}-${item.pieceCodeId}`,
-        type: 'production',
-        title: t('products.activity.productionCompleted', 'Production completed'),
-        subtitle: `${item.employeeName || t('products.activity.unknown', 'Unknown')} ${t('products.activity.produced', 'produced')} ${item.quantity} ${t('products.activity.pcsWord', 'Pcs')}\n(${item.pieceCode || t('products.activity.na', 'N/A')})`,
-        date: dayjs(item.productionDate).format('DD MMM YYYY hh:mm A'),
-        dateBy: `${t('products.by', 'by')} ${item.employeeName || t('products.activity.unknown', 'Unknown')}`,
-        sortDate: new Date(item.productionDate),
-      });
-    });
-
-    return activities.sort((a, b) => b.sortDate - a.sortDate);
-  }, [productProductionItems, pieceCodes, materialCosts]);
-
-  const ACTIVITY_PREVIEW_COUNT = 5;
-  const ACTIVITY_MAX = 20;
-  const visibleActivities = showAllActivities ? allActivities.slice(0, ACTIVITY_MAX) : allActivities.slice(0, ACTIVITY_PREVIEW_COUNT);
-  const hasMoreActivities = allActivities.length > ACTIVITY_PREVIEW_COUNT;
-
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'material_cost':
-        return { icon: <DollarOutlined style={{ color: 'var(--theme-primary)', fontSize: '1rem' }} />, bg: '#DBEAFE' };
-      case 'piece_code':
-        return { icon: <BarcodeOutlined style={{ color: 'var(--theme-primary)', fontSize: '1rem' }} />, bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)' };
-      case 'production':
-        return { icon: <BuildOutlined style={{ color: 'var(--theme-primary)', fontSize: '1rem' }} />, bg: '#D1FAE5' };
-      case 'inventory':
-        return { icon: <InboxOutlined style={{ color: 'var(--theme-primary)', fontSize: '1rem' }} />, bg: '#CFFAFE' };
-      case 'product_update':
-        return { icon: <EditOutlined style={{ color: 'var(--theme-primary)', fontSize: '1rem' }} />, bg: 'color-mix(in srgb, var(--theme-primary) 12%, white)' };
-      default:
-        return { icon: <FileTextOutlined style={{ color: '#64748B', fontSize: '1rem' }} />, bg: '#F1F5F9' };
-    }
-  };
-
-  // One activity card – shared by preview and expanded views so both look identical.
-  const renderActivityCard = (act) => {
-    const iconConfig = getActivityIcon(act.type);
-    return (
-      <div
-        key={act.id}
-        style={{
-          flex: '1 1 220px',
-          minWidth: 220,
-          maxWidth: 340,
-          display: 'flex',
-          gap: 12,
-          alignItems: 'flex-start',
-          padding: '14px 16px',
-          borderRadius: 10,
-          backgroundColor: '#FAFAFA',
-          border: '1px solid #F1F5F9',
-          transition: 'box-shadow 0.2s, border-color 0.2s',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
-          e.currentTarget.style.borderColor = '#E2E8F0';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = 'none';
-          e.currentTarget.style.borderColor = '#F1F5F9';
-        }}
-      >
-        <div style={{
-          width: 36, height: 36, borderRadius: 10,
-          backgroundColor: iconConfig.bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          {iconConfig.icon}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: '0.75rem', color: '#1E293B', marginBottom: 2, wordBreak: 'break-word' }}>
-            {act.title}
-          </div>
-          <div style={{ fontSize: '0.68rem', color: '#64748B', lineHeight: 1.4, whiteSpace: 'pre-line', wordBreak: 'break-word' }}>
-            {act.subtitle}
-          </div>
-          <div style={{ fontSize: '0.65rem', color: '#94A3B8', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <ClockCircleOutlined style={{ fontSize: '0.55rem' }} />
-            {act.date}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ── Mutations ───────────────────────────────────
-  const createPieceCodeMutation = useMutation({
-    mutationFn: (data) => productService.createPieceCode(productId, data),
-    onSuccess: (res) => {
-      notification.success({ message: t('products.toast.pcCreated', 'Piece Code Created'), description: res.message || t('products.toast.createdSuccess', 'Created successfully.'), placement: 'topRight', duration: 4 });
-      queryClient.invalidateQueries({ queryKey: ['pieceCodes', productId] });
-      queryClient.invalidateQueries({ queryKey: ['product', productId] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      handleCloseDrawer();
-    },
-    onError: (err) => {
-      notification.error({ message: t('products.toast.creationFailed', 'Creation Failed'), description: err.response?.data?.message || err.message, placement: 'topRight', duration: 5 });
-    },
-  });
 
   // Activate / deactivate (archive) the product itself.
   const productStatusMutation = useMutation({
@@ -495,57 +222,6 @@ const ProductDetailsPage = () => {
       cancelText: t('common.cancel', 'Cancel'),
       onOk: () => productStatusMutation.mutate(false),
     });
-  };
-
-  const updateStatusMutation = useMutation({
-    mutationFn: ({ pieceCodeId, active }) => productService.updatePieceCodeStatus(pieceCodeId, active),
-    onSuccess: (res) => {
-      notification.success({ message: t('products.toast.statusUpdated', 'Status Updated'), description: res.message || t('products.toast.statusUpdatedShort', 'Status updated.'), placement: 'topRight', duration: 3 });
-      queryClient.invalidateQueries({ queryKey: ['pieceCodes', productId] });
-      queryClient.invalidateQueries({ queryKey: ['product', productId] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-    onError: (err) => {
-      notification.error({ message: t('products.toast.updateFailed', 'Update Failed'), description: err.response?.data?.message || err.message, placement: 'topRight', duration: 4 });
-    },
-    onSettled: () => {
-      setTogglingPieceCodeId(null);
-    },
-  });
-
-  const handleTogglePieceCodeStatus = (record) => {
-    setTogglingPieceCodeId(record.id);
-    updateStatusMutation.mutate({ pieceCodeId: record.id, active: !record.active });
-  };
-
-  const deletePieceCodeMutation = useMutation({
-    mutationFn: (pieceCodeId) => productService.deletePieceCode(pieceCodeId),
-    onSuccess: (res) => {
-      if (res.success === false) {
-        Modal.warning({ title: t('products.toast.cannotDelete', 'Cannot Delete'), icon: <InfoCircleOutlined style={{ color: 'var(--theme-primary)' }} />, content: res.message || t('products.toast.pcHasHistory', 'This piece code has production history. Deactivate it instead.'), okText: t('products.ok', 'OK') });
-        return;
-      }
-      notification.success({ message: t('products.toast.pcDeleted', 'Piece Code Deleted'), description: res.message || t('products.toast.deletedSuccess', 'Deleted successfully.'), placement: 'topRight', duration: 4 });
-      queryClient.invalidateQueries({ queryKey: ['pieceCodes', productId] });
-      queryClient.invalidateQueries({ queryKey: ['product', productId] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-    onError: (err) => {
-      const status = err.status || err.response?.status;
-      if (status === 409 || status === 400) {
-        Modal.warning({ title: t('products.toast.cannotDelete', 'Cannot Delete'), icon: <InfoCircleOutlined style={{ color: 'var(--theme-primary)' }} />, content: err.response?.data?.message || t('products.toast.pcHasHistory', 'This piece code has production history. Deactivate it instead.'), okText: t('products.ok', 'OK') });
-      } else {
-        notification.error({ message: t('products.toast.deleteFailed', 'Delete Failed'), description: err.response?.data?.message || err.message, placement: 'topRight', duration: 5 });
-      }
-    },
-    onSettled: () => {
-      setDeletingPieceCodeId(null);
-    },
-  });
-
-  const deletePieceCode = (id) => {
-    setDeletingPieceCodeId(id);
-    deletePieceCodeMutation.mutate(id);
   };
 
   const deleteMaterialCostMutation = useMutation({
@@ -582,11 +258,6 @@ const ProductDetailsPage = () => {
   };
 
 
-  // ── Drawer ──────────────────────────────────────
-  const handleOpenDrawer = () => { form.resetFields(); setPreviewCode(''); setPreviewRate(null); setPreviewDesc(''); setDrawerVisible(true); };
-  const handleCloseDrawer = () => { setDrawerVisible(false); form.resetFields(); setPreviewCode(''); setPreviewRate(null); setPreviewDesc(''); };
-  const handleOpenProductionDrawer = () => setProductionDrawerVisible(true);
-  const handleCloseProductionDrawer = () => setProductionDrawerVisible(false);
 
   // ── Batch adjust / QR (reflects across stock cards, inventory, dashboard) ──
   const openAdjust = (batch) => { setAdjustTarget(batch); setAdjQty(''); setAdjDir('INCREASE'); setAdjError(''); };
@@ -602,27 +273,69 @@ const ProductDetailsPage = () => {
 
   const submitAdjust = async () => {
     const qty = Number(adjQty);
-    if (!qty || qty <= 0) { setAdjError(t('products.adjust.errZero', 'Enter a quantity greater than zero')); return; }
+
+    if (!qty || qty <= 0) {
+      setAdjError(
+        t('inventory.enterQtyPositive', 'Enter a quantity greater than zero')
+      );
+      return;
+    }
+
     const available = Number(adjustTarget?.quantityAvailable ?? 0);
-    if (adjDir === 'DECREASE' && qty > available) { setAdjError(`${t('products.adjust.errOnlyA', 'Only')} ${available} ${t('products.adjust.errOnlyB', 'unit(s) available in this batch')}`); return; }
-    setAdjSaving(true); setAdjError('');
+
+    if (adjDir === 'DECREASE' && qty > available) {
+      setAdjError(
+        `${t('inventory.only', 'Only')} ${available} ${t(
+          'inventory.unitsInBatch',
+          'unit(s) available in this batch'
+        )}`
+      );
+      return;
+    }
+
+    setAdjSaving(true);
+    setAdjError('');
+
     try {
-      await axiosInstance.patch(`/inventory/batches/${adjustTarget.batchId}/adjust`, {
-        quantity: qty, direction: adjDir,
+      await axiosInstance.patch(
+        `/inventory/batches/${adjustTarget.batchId}/adjust`,
+        {
+          quantity: qty,
+          direction: adjDir,
+          remarks: adjRemarks.trim() || undefined,
+        }
+      );
+
+      setToast({
+        open: true,
+        message: `${
+          adjDir === 'INCREASE'
+            ? t('inventory.stockIncreasedBy', 'Stock increased by')
+            : t('inventory.stockDecreasedBy', 'Stock decreased by')
+        } ${qty}`,
       });
-      notification.success({ message: `${adjDir === 'INCREASE' ? t('products.adjust.stockIncreased', 'Stock increased by') : t('products.adjust.stockDecreased', 'Stock decreased by')} ${qty}`, placement: 'topRight', duration: 3 });
+
       setAdjustTarget(null);
-      refreshStock();
+
+      // Refresh inventory data
+      setRefreshKey((key) => key + 1);
+
+      // Refresh dashboard and alerts
+      queryClient.invalidateQueries({ queryKey: ['dashboardOverview'] });
+      queryClient.invalidateQueries({ queryKey: ['lowStockAlerts'] });
+
+      window.dispatchEvent(new Event('inventory-alerts-updated'));
     } catch (err) {
-      setAdjError(err.response?.data?.message || err.message || t('products.adjust.failed', 'Failed to adjust stock'));
+      setAdjError(
+        err.response?.data?.message ||
+          err.message ||
+          t('inventory.adjustFailed', 'Failed to adjust stock')
+      );
     } finally {
       setAdjSaving(false);
     }
   };
-  const handleFormChange = (_, v) => { setPreviewCode(v.code || ''); setPreviewRate(v.rate || null); setPreviewDesc(v.description || ''); };
-  const handleCreatePieceCode = (values) => {
-    createPieceCodeMutation.mutate({ code: values.code.trim().toUpperCase(), rate: Number(values.rate), description: values.description?.trim() || undefined });
-  };
+
 
   // ── Styles ──────────────────────────────────────
   const cardStyle = {
@@ -632,144 +345,6 @@ const ProductDetailsPage = () => {
     backgroundColor: '#ffffff',
   };
 
-  // ── Table Columns ────────────────────────────────
-  const columns = [
-    {
-      title: t('products.col.index', '#'),
-      key: 'index',
-      width: 44,
-      render: (_, __, index) => <span style={{ color: '#94A3B8', fontWeight: 600, fontSize: '0.8rem' }}>{index + 1}</span>,
-    },
-    {
-      title: t('products.col.pieceCode', 'Piece Code'),
-      dataIndex: 'code',
-      key: 'code',
-      // render: (code) => (
-      //   <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '0.9rem', color: 'var(--theme-primary)', backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', padding: '3px 10px', borderRadius: 6, letterSpacing: 0.5, border: '1px solid #C7D2FE' }}>
-      //     {code}
-      //   </span>
-      // ),
-      sorter: (a, b) => a.code.localeCompare(b.code),
-    },
-    {
-      title: t('products.col.fixedRate', 'Fixed Rate'),
-      dataIndex: 'rate',
-      key: 'rate',
-      render: (rate) => <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--theme-primary)' }}>{getCurrencySymbol()}{Number(rate).toLocaleString('en-IN')}</span>,
-      sorter: (a, b) => (a.rate || 0) - (b.rate || 0),
-    },
-    {
-      title: t('common.status', 'Status'),
-      dataIndex: 'active',
-      key: 'status',
-      render: (active) => (
-        <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '3px 10px',
-          borderRadius: 12,
-          fontSize: '0.78rem',
-          fontWeight: 700,
-          color: active ? '#16A34A' : '#DC2626',
-          backgroundColor: 'transparent',
-          border: `1px solid ${active ? '#16A34A' : '#DC2626'}`,
-        }}>
-          {active ? t('products.active', 'Active') : t('products.inactive', 'Inactive')}
-        </span>
-      ),
-    },
-    {
-      title: t('common.actions', 'Actions'),
-      key: 'actions',
-      width: 140,
-      align: 'center',
-      render: (_, record) => (
-        isPurchasedProduct ? (
-          <Tooltip title={t('products.pc.actionsDisabled', 'Piece code actions are not available for purchased products')} placement="top">
-            <Space size={6}>
-              <Button
-                type="text"
-                size="small"
-                icon={<StopOutlined />}
-                disabled
-                style={{
-                  color: '#94A3B8',
-                  backgroundColor: '#F3F4F6',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: 6,
-                  width: 28,
-                  height: 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              />
-              <Button
-                type="text"
-                size="small"
-                icon={<DeleteOutlined />}
-                disabled
-                style={{
-                  color: '#94A3B8',
-                  backgroundColor: '#F3F4F6',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: 6,
-                  width: 28,
-                  height: 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              />
-            </Space>
-          </Tooltip>
-        ) : (
-          <Space size={6}>
-            {can('products', 'write') && (
-            <Tooltip title={record.active ? t('products.deactivate', 'Deactivate') : t('products.activate', 'Activate')} placement="top">
-              <Popconfirm
-                title={record.active ? t('products.pc.confirmDeactivate', 'Deactivate this piece code? Once inactive, it will not show in the table.') : t('products.pc.confirmActivate', 'Activate this piece code?')}
-                onConfirm={() => handleTogglePieceCodeStatus(record)}
-                okText={record.active ? t('products.deactivate', 'Deactivate') : t('products.activate', 'Activate')}
-                okButtonProps={{ danger: record.active }}
-                cancelText={t('common.cancel', 'Cancel')}
-                placement="topRight"
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  icon={record.active ? <StopOutlined /> : <CheckCircleOutlined />}
-                  loading={updateStatusMutation.isLoading && togglingPieceCodeId === record.id}
-                  style={{
-                    color: record.active ? 'var(--theme-primary)' : 'var(--theme-primary)',
-                    backgroundColor: record.active ? 'color-mix(in srgb, var(--theme-primary) 12%, white)' : 'color-mix(in srgb, var(--theme-primary) 12%, white)',
-                    border: '1px solid',
-                    borderColor: record.active ? '#FDE68A' : '#6EE7B7',
-                    borderRadius: 6,
-                    width: 28,
-                    height: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                />
-              </Popconfirm>
-            </Tooltip>
-            )}
-            {can('products', 'delete') && (
-            <Tooltip title={t('common.delete', 'Delete')} placement="top">
-              <Popconfirm title={t('products.pc.confirmDelete', 'Delete this piece code?')} description={t('products.pc.deleteIrreversible', 'This action cannot be undone.')} onConfirm={() => deletePieceCode(record.id)} okText={t('common.delete', 'Delete')} okButtonProps={{ danger: true }} cancelText={t('common.cancel', 'Cancel')} placement="topRight">
-                <Button type="text" size="small" icon={<DeleteOutlined />} loading={deletePieceCodeMutation.isLoading && deletingPieceCodeId === record.id}
-                  style={{ color: '#EF4444', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-              </Popconfirm>
-            </Tooltip>
-            )}
-          </Space>
-        )
-      ),
-    },
-  ];
 
   // Profit derived from a cost + selling price pair. Returns null when either
   // side is missing so callers can render a neutral placeholder.
@@ -857,25 +432,25 @@ const ProductDetailsPage = () => {
       render: (_, record) => (
         <Space>
           {can('products', 'write') && (
-          <Tooltip title={t('common.edit', 'Edit')}>
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => editMaterialCost(record)}
-            />
-          </Tooltip>
+            <Tooltip title={t('common.edit', 'Edit')}>
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => editMaterialCost(record)}
+              />
+            </Tooltip>
           )}
           {can('products', 'delete') && (
-          <Popconfirm
-            title={t('products.pricing.confirmDelete', 'Delete this pricing row?')}
-            onConfirm={() => deleteMaterialCost(record.id)}
-          >
-            <Button
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-            />
-          </Popconfirm>
+            <Popconfirm
+              title={t('products.pricing.confirmDelete', 'Delete this pricing row?')}
+              onConfirm={() => deleteMaterialCost(record.id)}
+            >
+              <Button
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+              />
+            </Popconfirm>
           )}
         </Space>
       ),
@@ -1279,190 +854,6 @@ const ProductDetailsPage = () => {
           onAdjust={openAdjust}
           onQr={setQrBatch}
         />
-
-        {/* ── Add Piece Code Drawer ── */}
-        <Drawer
-          title={
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
-              <div style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <BarcodeOutlined style={{ color: 'var(--theme-primary)', fontSize: '0.95rem' }} />
-              </div>
-              {t('products.addPieceCode', 'Add Piece Code')}
-            </span>
-          }
-          placement="right"
-          width={480}
-          onClose={handleCloseDrawer}
-          open={drawerVisible}
-          bodyStyle={{ backgroundColor: '#F8FAFC', padding: 24 }}
-          footer={
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '10px 16px' }}>
-              <Button onClick={handleCloseDrawer} style={{ borderRadius: 8, fontWeight: 600, height: 40 }}>{t('common.cancel', 'Cancel')}</Button>
-              <Button type="primary" icon={<PlusOutlined />} loading={createPieceCodeMutation.isPending} onClick={() => form.submit()} style={{ borderRadius: 8, fontWeight: 700, height: 40, paddingInline: 20 }}>
-                {t('products.createPieceCode', 'Create Piece Code')}
-              </Button>
-            </div>
-          }
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Context */}
-            <div style={{ backgroundColor: '#fff', border: '1px solid #E2E8F0', borderRadius: 10, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ fontSize: '2rem' }}>{productIcon}</div>
-              <div>
-                <div style={{ fontWeight: 800, color: '#0F172A', fontSize: '0.92rem' }}>{product.name}</div>
-                <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 500 }}>{totalPieceCodes} {t('products.pcDrawer.existingA', 'existing codes ·')} {activePieceCodes} {t('products.pcDrawer.activeB', 'active')}</div>
-              </div>
-            </div>
-
-            {/* Warning */}
-            <div style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', border: '1px solid #FDE68A', borderRadius: 8, padding: '10px 14px', fontSize: '0.78rem', color: '#92400E', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <InfoCircleOutlined style={{ color: 'var(--theme-primary)', marginTop: 2, flexShrink: 0 }} />
-              <span>{t('products.pcDrawer.warnA', 'Rate is')} <strong>{t('products.pcDrawer.warnStrong', 'permanently fixed')}</strong> {t('products.pcDrawer.warnB', 'and cannot be edited after creation. If pricing changes, create a new piece code.')}</span>
-            </div>
-
-            {/* Form */}
-            <Card style={{ borderRadius: 10, border: '1px solid #E2E8F0' }} bodyStyle={{ padding: 20 }}>
-              <Form form={form} layout="vertical" onFinish={handleCreatePieceCode} onValuesChange={handleFormChange} autoComplete="off" requiredMark={false}>
-                <Form.Item name="code" label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.pieceCodeSingle', 'Piece Code *')}</span>}
-                  rules={[{ required: true, message: t('products.rule.pcRequired', 'Piece code is required.') }, { whitespace: true, message: t('products.rule.pcBlank', 'Cannot be blank.') }, { pattern: /^[A-Za-z0-9\-_]+$/, message: t('products.rule.pcPattern', 'Only letters, numbers, hyphens, underscores.') }]}>
-                  <Input placeholder={t('products.placeholder.pcExample', 'e.g. SHIRT-001')} size="large" style={{ borderRadius: 8, fontFamily: 'monospace', fontWeight: 700 }}
-                    onChange={(e) => { form.setFieldValue('code', e.target.value.toUpperCase()); setPreviewCode(e.target.value.toUpperCase()); }} />
-                </Form.Item>
-                <Form.Item name="rate" label={<span style={{ fontWeight: 700, color: '#374151' }}>{t('products.field.fixedRate', 'Fixed Rate')} ({getCurrencySymbol()}) *</span>}
-                  rules={[{ required: true, message: t('products.rule.rateRequiredDot', 'Rate is required.') }, { validator: (_, v) => (!v && v !== 0) || Number(v) > 0 ? Promise.resolve() : Promise.reject(`${t('products.rule.rateMustExceed', 'Rate must be >')} ${getCurrencySymbol()}0.`) }]}>
-                  <InputNumber placeholder={t('products.placeholder.rateExample', 'e.g. 10')} size="large" min={0.01} precision={2} prefix={getCurrencySymbol()} style={{ width: '100%', borderRadius: 8 }} onChange={(val) => setPreviewRate(val)} />
-                </Form.Item>
-              </Form>
-            </Card>
-
-            {/* Live Preview */}
-            <PieceCodePreview code={previewCode} rate={previewRate} description={previewDesc} />
-          </div>
-        </Drawer>
-
-        <Drawer
-          title={
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
-              <div style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShoppingCartOutlined style={{ color: '#0C4A6E', fontSize: '0.95rem' }} />
-              </div>
-              {t('products.receipts.title', 'Stock Receipts')}
-            </span>
-          }
-          placement="right"
-          width={820}
-          onClose={handleCloseProductionDrawer}
-          open={productionDrawerVisible}
-          bodyStyle={{ backgroundColor: '#F8FAFC', padding: 24 }}
-        >
-          <Tabs
-            activeKey={batchStatus}
-            onChange={setBatchStatus}
-            items={[{ key: 'ACTIVE', label: t('products.receipts.tabActive', 'Active') }, { key: 'SOLD', label: t('products.receipts.tabSold', 'Sold') }]}
-            tabBarExtraContent={{
-              right: (
-                <DatePicker.RangePicker
-                  value={dateRange}
-                  onChange={(dates) => setDateRange(dates || [null, null])}
-                  format="DD-MMM-YY"
-                  size="small"
-                  style={{ width: 230 }}
-                />
-              ),
-            }}
-            style={{ marginBottom: 8 }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-            <Segmented
-              size="small"
-              value={batchSource}
-              onChange={setBatchSource}
-              options={[{ label: t('common.all', 'All'), value: 'ALL' }, { label: t('products.receipts.segPurchase', 'Purchase'), value: 'PURCHASED' }, { label: t('products.receipts.segProduction', 'Production'), value: 'MANUFACTURED' }]}
-            />
-            <Button type="link" size="small" onClick={() => { setDateRange([null, null]); setBatchSource('ALL'); }} style={{ color: 'var(--theme-primary)', fontWeight: 700, padding: 0 }}>{t('common.reset', 'Reset')}</Button>
-          </div>
-          <Table
-            loading={batchesLoading}
-            columns={[
-              {
-                title: t('common.date', 'Date'),
-                dataIndex: 'receivedDate',
-                key: 'receivedDate',
-                render: (date) => dayjs(date).format('DD-MMM-YYYY'),
-                sorter: (a, b) => new Date(b.receivedDate) - new Date(a.receivedDate),
-                defaultSortOrder: 'descend',
-              },
-              {
-                title: t('products.meta.source', 'Source'),
-                dataIndex: 'source',
-                key: 'source',
-                render: (source) => (
-                  <Tag color={source === 'PURCHASED' ? 'blue' : 'purple'} style={{ borderRadius: 6, margin: 0 }}>
-                    {source === 'PURCHASED' ? t('products.receipts.tag.purchase', 'Purchase') : t('products.receipts.tag.production', 'Production')}
-                  </Tag>
-                ),
-              },
-              {
-                title: t('products.col.qty', 'Qty'),
-                dataIndex: 'totalQuantity',
-                key: 'totalQuantity',
-                align: 'right',
-                render: (q) => q != null ? Number(q).toLocaleString('en-IN') : '-',
-              },
-              {
-                title: t('products.col.sold', 'Sold'),
-                key: 'sold',
-                align: 'right',
-                render: (_, r) => {
-                  const sold = (Number(r.totalQuantity) || 0) - (Number(r.quantityAvailable) || 0);
-                  return <span style={{ color: sold > 0 ? 'var(--theme-primary)' : '#94A3B8' }}>{sold.toLocaleString('en-IN')}</span>;
-                },
-              },
-              {
-                title: t('products.col.left', 'Left'),
-                dataIndex: 'quantityAvailable',
-                key: 'quantityAvailable',
-                align: 'right',
-                render: (q) => <b style={{ color: 'var(--theme-primary)' }}>{(Number(q) || 0).toLocaleString('en-IN')}</b>,
-              },
-              {
-                title: `${t('products.col.cost', 'Cost')} (${getCurrencySymbol()})`,
-                dataIndex: 'unitCost',
-                key: 'unitCost',
-                align: 'right',
-                render: (c) => c != null ? `${getCurrencySymbol()}${Number(c).toLocaleString('en-IN')}` : '-',
-              },
-              {
-                title: `${t('products.col.sale', 'Sale')} (${getCurrencySymbol()})`,
-                dataIndex: 'sellingPrice',
-                key: 'sellingPrice',
-                align: 'right',
-                render: (s) => s != null ? `${getCurrencySymbol()}${Number(s).toLocaleString('en-IN')}` : '-',
-              },
-              // Adjust qty + QR, only for in-stock batches when the user can edit inventory.
-              ...(batchStatus === 'ACTIVE' && can('inventory', 'write') ? [{
-                title: t('common.actions', 'Actions'),
-                key: 'actions',
-                align: 'center',
-                render: (_, r) => (Number(r.quantityAvailable) || 0) > 0 ? (
-                  <Space size={2}>
-                    <Tooltip title={t('products.receipts.adjustTooltip', 'Adjust stock (increase / decrease)')}>
-                      <Button type="text" size="small" icon={<SlidersOutlined />} onClick={() => openAdjust(r)} style={{ color: 'var(--theme-primary)' }} />
-                    </Tooltip>
-                    <Tooltip title={t('products.receipts.qrTooltip', 'Generate QR labels')}>
-                      <Button type="text" size="small" icon={<QrcodeOutlined />} onClick={() => setQrBatch({ batchNumber: r.batchNumber, productName: product.name, quantityAvailable: r.quantityAvailable, quantityReceived: r.totalQuantity })} style={{ color: 'var(--theme-primary)' }} />
-                    </Tooltip>
-                  </Space>
-                ) : <span style={{ color: '#CBD5E1' }}>—</span>,
-              }] : []),
-            ]}
-            dataSource={filteredReceipts}
-            rowKey={(item) => item.batchId}
-            pagination={{ pageSize: 20, showSizeChanger: false, showQuickJumper: true, position: ['bottomRight'] }}
-            locale={{ emptyText: t('products.receipts.empty', 'No stock receipts for this product.') }}
-            size="small"
-          />
-        </Drawer>
 
         {/* Adjust stock modal (batch increase / decrease) */}
         <Modal

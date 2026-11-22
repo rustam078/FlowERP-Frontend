@@ -75,7 +75,6 @@ const BatchHistorySection = ({ batches = [], productName, canWrite, onAdjust, on
                     <TableCell>{formatCurrency(batch.batchValue != null ? batch.batchValue : availableQ * Number(batch.unitCost || 0))}</TableCell>
                     <TableCell><Chip label={batch.status} size="small" color={batch.status === 'ACTIVE' ? 'success' : 'default'} variant="outlined" /></TableCell>
                     <TableCell align="center">
-                      {availableQ > 0 ? (
                         <Stack direction="row" spacing={1} justifyContent="center">
                           {canWrite && (
                             <Tooltip title={t('inventory.adjustTooltip', 'Adjust stock (increase / decrease)')}>
@@ -86,13 +85,12 @@ const BatchHistorySection = ({ batches = [], productName, canWrite, onAdjust, on
                           )}
                           {canWrite && (
                             <Tooltip title={t('inventory.qrTooltip', 'Generate & print QR labels for this batch')}>
-                              <Button size="small" variant="outlined" color="secondary" startIcon={<QrCode2Icon fontSize="small" />} onClick={() => onQr?.({ batchNumber: batch.batchNumber, productName, quantityAvailable: availableQ, quantityReceived: totalQ })} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
+                              <Button size="small" variant="outlined" color="secondary" startIcon={<QrCode2Icon fontSize="small" />} disabled={availableQ <= 0} onClick={() => onQr?.({ batchNumber: batch.batchNumber, productName, quantityAvailable: availableQ, quantityReceived: totalQ })} sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}>
                                 QR
                               </Button>
                             </Tooltip>
                           )}
                         </Stack>
-                      ) : <Typography variant="body2" color="text.secondary">—</Typography>}
                     </TableCell>
                   </TableRow>
                 );

@@ -257,17 +257,6 @@ const ProductsPage = () => {
   });
 
   const products = productsData?.data || [];
-  const manufactureProducts = products.filter((p) => p.source !== 'PURCHASED');
-  const purchaseProducts = products.filter((p) => p.source === 'PURCHASED');
-
-  // ── Stats ──────────────────────────────────────────────
-  const totalProducts = products.length;
-  const activeProducts = products.filter((p) => p.active).length;
-  const inactiveProducts = products.filter((p) => !p.active).length;
-  const totalPieceCodesAcrossAll = products.reduce(
-    (sum, p) => sum + (p.activePieceCodes || 0),
-    0
-  );
 
   // ── Mutations ──────────────────────────────────────────
   const createProductMutation = useMutation({
@@ -683,19 +672,6 @@ const ProductsPage = () => {
         <Drawer
           title={
             <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  backgroundColor: 'color-mix(in srgb, var(--theme-primary) 12%, white)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <PlusOutlined style={{ color: 'var(--theme-primary)', fontSize: '1rem' }} />
-              </div>
               {t('products.drawer.addTitle', 'Add New Product')}
             </span>
           }
@@ -883,7 +859,7 @@ const ProductsPage = () => {
             </div>
 
             <div style={{ fontWeight: 700, color: '#374151', marginBottom: 6 }}>{t('products.field.pieceCodes', 'Piece Codes *')}</div>
-            <Form.List name="pieceCodes">
+            {/* <Form.List name="pieceCodes">
               {(fields, { add, remove }) => (
                 <>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
@@ -914,7 +890,7 @@ const ProductsPage = () => {
                   </Button>
                 </>
               )}
-            </Form.List>
+            </Form.List> */}
           </Form>
         </Modal>
 
